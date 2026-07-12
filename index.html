@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>提出物管理</title>
+<meta name="description" content="宿題・課題の提出期限を管理するアプリ">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#F5F6F3">
+<style>
+:root{
+  --paper:#F5F6F3; --ink:#1E2A3A; --marker:#FFE24D; --marker-soft:#FFF3B8;
+  --alert:#E0492F; --alert-soft:#FBE3DD; --muted:#7A8494; --line:#E2E5E0;
+  --card:#FFFFFF; --radius:14px;
+  --sans:"Hiragino Sans","Hiragino Kaku Gothic ProN","BIZ UDPGothic","Yu Gothic",system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{font-family:var(--sans);background:var(--paper);color:var(--ink);
+  font-size:15px;line-height:1.6;padding-bottom:96px;
+  padding-top:env(safe-area-inset-top);}
+button{font-family:inherit;font-size:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input,select,textarea{font-family:inherit;font-size:16px;color:var(--ink);
+  border:1.5px solid var(--line);border-radius:10px;background:var(--card);
+  padding:10px 12px;width:100%;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--ink)}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+
+/* ---- header ---- */
+header{padding:18px 18px 6px;display:flex;align-items:baseline;justify-content:space-between}
+header h1{font-size:20px;font-weight:800;letter-spacing:.02em}
+header h1 .hl{background:linear-gradient(transparent 58%, var(--marker) 58%);padding:0 2px}
+header .count{font-size:12px;color:var(--muted)}
+
+/* ---- soon banner ---- */
+.soon{margin:8px 18px 0;background:var(--alert-soft);border-radius:var(--radius);
+  padding:12px 14px;font-size:13.5px}
+.soon b{color:var(--alert)}
+.soon ul{list-style:none;margin-top:4px}
+.soon li{display:flex;justify-content:space-between;gap:8px}
+.soon li span:last-child{white-space:nowrap;font-weight:700;color:var(--alert)}
+
+/* ---- goal card ---- */
+.goal{margin:14px 18px 0;background:var(--card);border-radius:var(--radius);
+  border:1.5px solid var(--line);overflow:hidden}
+.goal>button{width:100%;display:flex;justify-content:space-between;align-items:center;
+  padding:12px 14px;font-weight:700;font-size:14px;text-align:left}
+.goal>button .chev{color:var(--muted);transition:transform .2s}
+.goal.open>button .chev{transform:rotate(90deg)}
+.goal .body{display:none;padding:0 14px 14px}
+.goal.open .body{display:block}
+.goal label{display:block;font-size:12px;color:var(--muted);font-weight:700;margin:10px 0 4px}
+.goal .saved{font-size:12px;color:var(--muted);margin-top:8px;min-height:1em}
+
+/* ---- task list ---- */
+main{padding:14px 18px 0;display:flex;flex-direction:column;gap:12px}
+.empty{color:var(--muted);text-align:center;padding:48px 24px;font-size:14px}
+.empty .big{font-size:34px;display:block;margin-bottom:8px}
+.card{background:var(--card);border-radius:var(--radius);border:1.5px solid var(--line);
+  padding:14px;position:relative}
+.card.done{opacity:.55}
+.card.done .title{text-decoration:line-through}
+.card .top{display:flex;gap:10px;align-items:flex-start}
+.card .chk{flex:none;width:26px;height:26px;border-radius:50%;border:2px solid var(--line);
+  background:var(--card);margin-top:2px;display:grid;place-items:center;font-size:14px;color:transparent}
+.card.done .chk{background:var(--ink);border-color:var(--ink);color:var(--marker)}
+.card .info{flex:1;min-width:0}
+.card .subj{font-size:11.5px;font-weight:800;letter-spacing:.04em;color:var(--muted)}
+.card .title{font-size:15.5px;font-weight:700;overflow-wrap:anywhere}
+.card .dates{margin-top:6px;font-size:12.5px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 14px}
+.card .focus{margin-top:6px;font-size:12.5px;color:var(--muted);background:var(--paper);
+  border-radius:8px;padding:6px 9px}
+/* signature: highlighter countdown */
+.due{flex:none;text-align:center;min-width:64px}
+.due .n{display:inline-block;font-size:21px;font-weight:900;line-height:1.25;padding:0 6px;
+  background:linear-gradient(transparent 52%, var(--marker) 52%)}
+.due.warn .n{background:linear-gradient(transparent 52%, #FFC24D 52%)}
+.due.over .n,.due.today .n{background:linear-gradient(transparent 52%, var(--alert) 52%);color:#fff;
+  background:var(--alert);border-radius:8px;padding:1px 8px}
+.due .l{font-size:10.5px;color:var(--muted);font-weight:700;margin-top:2px}
+.card .acts{display:flex;gap:8px;margin-top:12px}
+.card .acts button{flex:1;border:1.5px solid var(--line);border-radius:10px;padding:8px 4px;
+  font-size:12.5px;font-weight:700;background:var(--card)}
+.card .acts .ics{background:var(--ink);color:#fff;border-color:var(--ink)}
+.card .acts .del{flex:0 0 44px;color:var(--muted)}
+
+/* ---- FAB ---- */
+.fab{position:fixed;right:18px;bottom:calc(20px + env(safe-area-inset-bottom));
+  width:58px;height:58px;border-radius:50%;background:var(--ink);color:var(--marker);
+  font-size:30px;font-weight:400;box-shadow:0 6px 18px rgba(30,42,58,.3);z-index:20;
+  display:grid;place-items:center;line-height:1}
+
+/* ---- sheet (form) ---- */
+.scrim{position:fixed;inset:0;background:rgba(30,42,58,.4);z-index:30;display:none}
+.scrim.show{display:block}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:31;background:var(--paper);
+  border-radius:20px 20px 0 0;max-height:88vh;overflow-y:auto;display:none;
+  padding:18px 18px calc(24px + env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch}
+.sheet.show{display:block}
+.sheet h2{font-size:17px;font-weight:800;margin-bottom:14px}
+.sheet .field{margin-bottom:14px}
+.sheet label{display:block;font-size:12.5px;font-weight:800;margin-bottom:5px}
+.sheet label .opt{color:var(--muted);font-weight:400;font-size:11.5px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips button{border:1.5px solid var(--line);background:var(--card);border-radius:999px;
+  padding:7px 14px;font-size:13.5px;font-weight:700}
+.chips button.on{background:var(--ink);color:var(--marker);border-color:var(--ink)}
+#catChips button.on{background:var(--c);color:#fff;border-color:var(--c)}
+.sheet .row{display:flex;gap:10px}
+.sheet .row>div{flex:1}
+.sheet .save{width:100%;background:var(--ink);color:#fff;border-radius:12px;
+  padding:14px;font-size:16px;font-weight:800;margin-top:4px}
+.sheet .cancel{width:100%;padding:12px;color:var(--muted);font-weight:700}
+.hint{font-size:11.5px;color:var(--muted);margin-top:5px}
+</style>
+</head>
+<body>
+
+<header>
+  <h1><span class="hl">提出物</span>管理</h1>
+  <span class="count" id="count"></span>
+</header>
+
+<div class="soon" id="soon" hidden></div>
+
+<section class="goal" id="goal">
+  <button type="button" id="goalToggle">
+    <span>🏁 夏休みの目標</span><span class="chev">›</span>
+  </button>
+  <div class="body">
+    <label for="gPurpose">目的(なぜ頑張るのか)</label>
+    <input id="gPurpose" placeholder="例:2学期のスタートで遅れないため">
+    <label for="gGoal">目標(どこまでやるか)</label>
+    <input id="gGoal" placeholder="例:8月20日までに全課題を提出できる状態にする">
+    <label for="gFirst">最初にすること</label>
+    <input id="gFirst" placeholder="例:今週中に数学ワークP.10まで">
+    <div class="saved" id="gSaved"></div>
+  </div>
+</section>
+
+<main id="list"></main>
+
+<button class="fab" id="fab" aria-label="課題を追加">＋</button>
+
+<div class="scrim" id="scrim"></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+  <h2 id="sheetTitle">課題を追加</h2>
+
+  <div class="field">
+    <label>教科等</label>
+    <div class="chips" id="catChips"></div>
+  </div>
+
+  <div class="field" id="subjField" hidden>
+    <label for="subjSel">科目</label>
+    <select id="subjSel"></select>
+    <input id="subjFree" placeholder="科目名を入力" style="margin-top:8px" hidden>
+  </div>
+
+  <div class="field">
+    <label for="fContent">課題の内容・範囲</label>
+    <input id="fContent" placeholder="例:ワークP.10〜15/レポート提出">
+  </div>
+
+  <div class="row field">
+    <div>
+      <label for="fDue">提出期限</label>
+      <input type="date" id="fDue">
+    </div>
+    <div>
+      <label for="fTarget">自分の終了予定日 <span class="opt">任意</span></label>
+      <input type="date" id="fTarget">
+    </div>
+  </div>
+
+  <div class="field">
+    <label>リマインド(複数選べます)</label>
+    <div class="chips" id="remChips"></div>
+    <div class="hint">「カレンダーに登録」ボタンを押すと、この設定でiPhone/Androidのカレンダー通知が届きます。</div>
+  </div>
+
+  <div class="field">
+    <label for="fFocus">この課題で意識すること <span class="opt">任意</span></label>
+    <input id="fFocus" placeholder="例:答えを写さず、まず自力で解く">
+  </div>
+
+  <button class="save" id="saveBtn">保存する</button>
+  <button class="cancel" id="cancelBtn">キャンセル</button>
+</div>
+
+<script>
+"use strict";
+/* ---------- data ---------- */
+const SUBJECTS = {
+  "国語": ["文学国語(必修)","基礎古典(選択)"],
+  "地歴・公民": ["公共(必修)","世界史探究(選択)","日本史探究(選択)","地理探求(選択)"],
+  "数学": ["数学Ⅱ(必修)","数学B(選択)"],
+  "理科": ["物理基礎(必修)","生物基礎(必修)","化学(選択)"],
+  "保健体育": ["保健(必修)"],
+  "英語": ["英語コミュⅡ(必修)","論理表現Ⅱ(必修)"],
+  "家庭": ["家庭基礎(必修)"],
+  "その他": ["探究(必修)"],
+  "学年・進路等": ["学年共通の課題・提出物"]
+};
+const CAT_META = {
+  "国語":        {color:"#D64545", icon:"📖"},
+  "地歴・公民":  {color:"#9C6B3C", icon:"🗺️"},
+  "数学":        {color:"#2E6FD6", icon:"📐"},
+  "理科":        {color:"#2E9E5B", icon:"🧪"},
+  "保健体育":    {color:"#ED7D31", icon:"🏃"},
+  "英語":        {color:"#7B5BD6", icon:"💬"},
+  "家庭":        {color:"#D65B9E", icon:"🍳"},
+  "その他":      {color:"#2E9EA6", icon:"🔍"},
+  "学年・進路等":{color:"#5A6B85", icon:"🏫"}
+};
+const FREE = "その他(自由入力)";
+const REMINDERS = [
+  {d:7, label:"1週間前"},{d:3,label:"3日前"},{d:2,label:"2日前"},
+  {d:1,label:"前日"},{d:0,label:"当日"}
+];
+const LS_TASKS = "teishutsu.tasks.v1";
+const LS_GOAL  = "teishutsu.goal.v1";
+
+let tasks = load(LS_TASKS, []);
+let goal  = load(LS_GOAL, {purpose:"",goal:"",first:""});
+let editingId = null;
+let selCat = null, selReminders = [3,1];
+
+function load(k, fb){ try{ const v = JSON.parse(localStorage.getItem(k)); return v ?? fb; }catch(e){ return fb; } }
+function saveTasks(){ localStorage.setItem(LS_TASKS, JSON.stringify(tasks)); }
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+/* ---------- dates ---------- */
+function today0(){ const d = new Date(); d.setHours(0,0,0,0); return d; }
+function parseDate(s){ const [y,m,d] = s.split("-").map(Number); return new Date(y, m-1, d); }
+function daysUntil(s){ return Math.round((parseDate(s) - today0()) / 86400000); }
+function fmt(s){ const d = parseDate(s); const w = "日月火水木金土"[d.getDay()];
+  return `${d.getMonth()+1}/${d.getDate()}(${w})`; }
+
+/* ---------- render list ---------- */
+const listEl = document.getElementById("list");
+const soonEl = document.getElementById("soon");
+const countEl = document.getElementById("count");
+
+function render(){
+  const open = tasks.filter(t=>!t.done).length;
+  countEl.textContent = tasks.length ? `残り ${open} 件 / 全 ${tasks.length} 件` : "";
+
+  // banner: due within 3 days or overdue (not done)
+  const soon = tasks.filter(t=>!t.done && daysUntil(t.due) <= 3)
+                    .sort((a,b)=>a.due.localeCompare(b.due));
+  if(soon.length){
+    soonEl.hidden = false;
+    soonEl.innerHTML = `<b>⚠️ まもなく提出</b><ul>` + soon.map(t=>{
+      const n = daysUntil(t.due);
+      const m = CAT_META[t.category] || {icon:"📄"};
+      const w = n < 0 ? `${-n}日超過` : n === 0 ? "今日" : `あと${n}日`;
+      return `<li><span>${m.icon} ${esc(t.subject)}:${esc(t.content||"")}</span><span>${w}</span></li>`;
+    }).join("") + `</ul>`;
+  } else soonEl.hidden = true;
+
+  if(!tasks.length){
+    listEl.innerHTML = `<div class="empty"><span class="big">📚</span>
+      まだ課題が登録されていません。<br>右下の「＋」から追加しましょう。</div>`;
+    return;
+  }
+  const sorted = [...tasks].sort((a,b)=> (a.done - b.done) || a.due.localeCompare(b.due));
+  listEl.innerHTML = sorted.map(cardHTML).join("");
+}
+
+function cardHTML(t){
+  const n = daysUntil(t.due);
+  let cls = "", num = `${n}`, lab = "あと(日)";
+  if(t.done){ num = "✓"; lab = "完了"; }
+  else if(n < 0){ cls = "over"; num = `${-n}`; lab = "日超過"; }
+  else if(n === 0){ cls = "today"; num = "今日"; lab = "提出日"; }
+  else if(n <= 3){ cls = "warn"; }
+  const m = CAT_META[t.category] || {color:"var(--muted)", icon:"📄"};
+  const dates = [`提出 ${fmt(t.due)}`];
+  if(t.target) dates.push(`目標 ${fmt(t.target)}`);
+  return `<div class="card${t.done?" done":""}" data-id="${t.id}" style="border-left:5px solid ${m.color}">
+    <div class="top">
+      <button class="chk" data-act="toggle" aria-label="完了にする">✓</button>
+      <div class="info">
+        <div class="subj" style="color:${m.color}">${m.icon} ${esc(t.category)}${t.category !== t.subject ? "・" + esc(t.subject) : ""}</div>
+        <div class="title">${esc(t.content) || "(内容メモなし)"}</div>
+        <div class="dates">${dates.map(d=>`<span>${d}</span>`).join("")}</div>
+        ${t.focus ? `<div class="focus">💡 ${esc(t.focus)}</div>` : ""}
+      </div>
+      <div class="due ${cls}"><span class="n">${num}</span><div class="l">${lab}</div></div>
+    </div>
+    <div class="acts">
+      <button class="ics" data-act="ics">📅 カレンダーに登録</button>
+      <button data-act="edit">編集</button>
+      <button class="del" data-act="del" aria-label="削除">🗑</button>
+    </div>
+  </div>`;
+}
+
+function esc(s){ return (s||"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+listEl.addEventListener("click", e=>{
+  const btn = e.target.closest("button"); if(!btn) return;
+  const id = e.target.closest(".card").dataset.id;
+  const t = tasks.find(x=>x.id===id); if(!t) return;
+  const act = btn.dataset.act;
+  if(act==="toggle"){ t.done = !t.done; saveTasks(); render(); }
+  else if(act==="del"){ if(confirm("この課題を削除しますか?")){ tasks = tasks.filter(x=>x.id!==id); saveTasks(); render(); } }
+  else if(act==="edit"){ openSheet(t); }
+  else if(act==="ics"){ downloadICS(t); }
+});
+
+/* ---------- ICS export ---------- */
+function icsDate(s){ return s.replaceAll("-",""); }
+function nextDay(s){ const d = parseDate(s); d.setDate(d.getDate()+1);
+  return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}`; }
+function alarm(days, summary){
+  // alarms fire at 8:00 AM: N days before => -P(N-1)DT16H, same day => PT8H
+  const trig = days === 0 ? "PT8H" : `-P${days-1}DT16H`;
+  return ["BEGIN:VALARM","ACTION:DISPLAY",`DESCRIPTION:${summary}`,`TRIGGER:${trig}`,"END:VALARM"];
+}
+function vevent(dateStr, summary, reminders){
+  const lines = ["BEGIN:VEVENT",
+    `UID:${uid()}@teishutsu`,
+    `DTSTAMP:${new Date().toISOString().replace(/[-:]/g,"").slice(0,15)}Z`,
+    `DTSTART;VALUE=DATE:${icsDate(dateStr)}`,
+    `DTEND;VALUE=DATE:${nextDay(dateStr)}`,
+    `SUMMARY:${summary}`];
+  reminders.forEach(d=> lines.push(...alarm(d, summary)));
+  lines.push("END:VEVENT");
+  return lines;
+}
+function downloadICS(t){
+  const rem = (t.reminders && t.reminders.length) ? t.reminders : [1,0];
+  let lines = ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//teishutsu//JP","CALSCALE:GREGORIAN"];
+  lines.push(...vevent(t.due, `【提出】${t.subject} ${t.content||""}`.trim(), rem));
+  if(t.target) lines.push(...vevent(t.target, `【目標】${t.subject} ${t.content||""} ここまでに終わらせる`.trim(), [0]));
+  lines.push("END:VCALENDAR");
+  const blob = new Blob([lines.join("\r\n")], {type:"text/calendar;charset=utf-8"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `${t.subject}_提出期限.ics`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 5000);
+}
+
+/* ---------- goal card ---------- */
+const goalEl = document.getElementById("goal");
+document.getElementById("goalToggle").addEventListener("click", ()=> goalEl.classList.toggle("open"));
+const gP = document.getElementById("gPurpose"), gG = document.getElementById("gGoal"),
+      gF = document.getElementById("gFirst"), gS = document.getElementById("gSaved");
+gP.value = goal.purpose; gG.value = goal.goal; gF.value = goal.first;
+let gTimer;
+[gP,gG,gF].forEach(el=> el.addEventListener("input", ()=>{
+  goal = {purpose:gP.value, goal:gG.value, first:gF.value};
+  localStorage.setItem(LS_GOAL, JSON.stringify(goal));
+  gS.textContent = "保存しました";
+  clearTimeout(gTimer); gTimer = setTimeout(()=> gS.textContent = "", 1500);
+}));
+
+/* ---------- form sheet ---------- */
+const sheet = document.getElementById("sheet"), scrim = document.getElementById("scrim");
+const catChips = document.getElementById("catChips"), remChips = document.getElementById("remChips");
+const subjField = document.getElementById("subjField"), subjSel = document.getElementById("subjSel"),
+      subjFree = document.getElementById("subjFree");
+const fContent = document.getElementById("fContent"), fDue = document.getElementById("fDue"),
+      fTarget = document.getElementById("fTarget"), fFocus = document.getElementById("fFocus");
+
+catChips.innerHTML = Object.keys(SUBJECTS).map(c=>
+  `<button type="button" data-cat="${c}" style="--c:${CAT_META[c].color}">${CAT_META[c].icon} ${c}</button>`).join("");
+remChips.innerHTML = REMINDERS.map(r=>`<button type="button" data-d="${r.d}">${r.label}</button>`).join("");
+
+catChips.addEventListener("click", e=>{
+  const b = e.target.closest("button"); if(!b) return;
+  selCat = b.dataset.cat;
+  [...catChips.children].forEach(x=>x.classList.toggle("on", x===b));
+  const opts = [...SUBJECTS[selCat], FREE];
+  subjSel.innerHTML = opts.map(o=>`<option>${o}</option>`).join("");
+  subjField.hidden = false;
+  subjFree.hidden = true; subjFree.value = "";
+});
+subjSel.addEventListener("change", ()=>{ subjFree.hidden = subjSel.value !== FREE; if(!subjFree.hidden) subjFree.focus(); });
+remChips.addEventListener("click", e=>{
+  const b = e.target.closest("button"); if(!b) return;
+  const d = Number(b.dataset.d);
+  if(selReminders.includes(d)) selReminders = selReminders.filter(x=>x!==d);
+  else selReminders.push(d);
+  b.classList.toggle("on");
+});
+
+function openSheet(t){
+  editingId = t ? t.id : null;
+  document.getElementById("sheetTitle").textContent = t ? "課題を編集" : "課題を追加";
+  selCat = t ? t.category : null;
+  selReminders = t ? [...t.reminders] : [3,1];
+  [...catChips.children].forEach(x=>x.classList.toggle("on", x.dataset.cat===selCat));
+  if(selCat){
+    const opts = [...SUBJECTS[selCat], FREE];
+    subjSel.innerHTML = opts.map(o=>`<option>${o}</option>`).join("");
+    subjField.hidden = false;
+    if(t && !SUBJECTS[selCat].includes(t.subject) && t.subject !== selCat){
+      subjSel.value = FREE; subjFree.hidden = false; subjFree.value = t.subject;
+    } else { subjSel.value = t ? t.subject : opts[0]; subjFree.hidden = true; subjFree.value=""; }
+  } else { subjField.hidden = true; }
+  fContent.value = t ? t.content : "";
+  fDue.value = t ? t.due : "";
+  fTarget.value = t ? (t.target||"") : "";
+  fFocus.value = t ? (t.focus||"") : "";
+  [...remChips.children].forEach(x=>x.classList.toggle("on", selReminders.includes(Number(x.dataset.d))));
+  sheet.classList.add("show"); scrim.classList.add("show");
+}
+function closeSheet(){ sheet.classList.remove("show"); scrim.classList.remove("show"); }
+
+document.getElementById("fab").addEventListener("click", ()=>openSheet(null));
+document.getElementById("cancelBtn").addEventListener("click", closeSheet);
+scrim.addEventListener("click", closeSheet);
+
+document.getElementById("saveBtn").addEventListener("click", ()=>{
+  if(!selCat){ alert("教科等を選んでください"); return; }
+  let subject = subjSel.value;
+  if(subject === FREE){
+    subject = subjFree.value.trim();
+    if(!subject){ alert("科目名を入力してください"); return; }
+  }
+  if(!fDue.value){ alert("提出期限を入力してください"); return; }
+  const data = {
+    category: selCat, subject,
+    content: fContent.value.trim(),
+    due: fDue.value,
+    target: fTarget.value || null,
+    focus: fFocus.value.trim(),
+    reminders: [...selReminders].sort((a,b)=>b-a)
+  };
+  if(editingId){
+    const t = tasks.find(x=>x.id===editingId);
+    Object.assign(t, data);
+  } else {
+    tasks.push({id:uid(), done:false, ...data});
+  }
+  saveTasks(); closeSheet(); render();
+});
+
+/* ---------- service worker ---------- */
+if("serviceWorker" in navigator){
+  window.addEventListener("load", ()=> navigator.serviceWorker.register("sw.js").catch(()=>{}));
+}
+
+render();
+</script>
+</body>
+</html>
