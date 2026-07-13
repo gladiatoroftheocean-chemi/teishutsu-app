@@ -1,4 +1,4 @@
-const CACHE = "teishutsu-v1";
+const CACHE = "teishutsu-v2";
 const ASSETS = ["./", "./index.html", "./manifest.json", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png"];
 
 self.addEventListener("install", e => {
@@ -10,12 +10,15 @@ self.addEventListener("activate", e => {
       .then(() => self.clients.claim())
   );
 });
-// network-first for index.html (so updates arrive), cache-first for the rest
+// network-first for index.html (so updates arrive), cache-first for the rest.
+// cache: "no-store" bypasses the browser's own HTTP cache, not just the SW cache —
+// otherwise iOS standalone apps can keep serving a stale response even though
+// this handler already tries the network "first".
 self.addEventListener("fetch", e => {
   const url = new URL(e.request.url);
   if (e.request.mode === "navigate" || url.pathname.endsWith("index.html")) {
     e.respondWith(
-      fetch(e.request).then(res => {
+      fetch(e.request, { cache: "no-store" }).then(res => {
         const copy = res.clone();
         caches.open(CACHE).then(c => c.put(e.request, copy));
         return res;

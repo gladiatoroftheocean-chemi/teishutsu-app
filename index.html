@@ -602,7 +602,18 @@ document.getElementById("saveBtn").addEventListener("click", ()=>{
 
 /* ---------- service worker ---------- */
 if("serviceWorker" in navigator){
-  window.addEventListener("load", ()=> navigator.serviceWorker.register("sw.js").catch(()=>{}));
+  window.addEventListener("load", ()=> {
+    navigator.serviceWorker.register("sw.js").then(reg=>{
+      reg.update(); // force an update check now, instead of waiting for the browser's own schedule
+    }).catch(()=>{});
+  });
+  // once a new service worker takes control, the page it's holding is stale — reload once
+  let refreshed = false;
+  navigator.serviceWorker.addEventListener("controllerchange", ()=>{
+    if(refreshed) return;
+    refreshed = true;
+    window.location.reload();
+  });
 }
 
 render();
