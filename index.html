@@ -153,7 +153,7 @@ main{padding:14px 18px 0;display:flex;flex-direction:column;gap:12px}
 
 <section class="goal" id="goal">
   <button type="button" id="goalToggle">
-    <span>🏁 わたしの目標宣言</span><span class="chev">›</span>
+    <span id="goalTitleText">🏁 わたしの目標宣言</span><span class="chev">›</span>
   </button>
   <div class="body">
     <label for="gPurpose">目的(なぜ頑張るのか)</label>
@@ -267,6 +267,9 @@ const EXAMS = [
   {name:"2学期期末考査", start:"2026-12-03", end:"2026-12-08"},
   {name:"学年末考査",   start:"2027-03-01", end:"2027-03-04"}
 ];
+/* 2学期始業日。この日より前は「夏休み仕様」(考査カウントダウン非表示・宿題/週末課題のみ)で動きます */
+const TERM2_START = "2026-09-01";
+function isSummer(){ return today0() < parseDate(TERM2_START); }
 const REMINDERS = [
   {d:7, label:"1週間前"},{d:3,label:"3日前"},{d:2,label:"2日前"},
   {d:1,label:"前日"},{d:0,label:"当日"}
@@ -298,10 +301,20 @@ function daysUntil(s){ return Math.round((parseDate(s) - today0()) / 86400000); 
 function fmt(s){ const d = parseDate(s); const w = "日月火水木金土"[d.getDay()];
   return `${d.getMonth()+1}/${d.getDate()}(${w})`; }
 
-/* ---------- exam countdown ---------- */
+/* ---------- header bar (summer / exam countdown) ---------- */
 function updateExamBar(){
   const bar = document.getElementById("examBar");
   const t = today0();
+  if(isSummer()){
+    // last day of vacation = the day before TERM2_START
+    const last = parseDate(TERM2_START); last.setDate(last.getDate()-1);
+    const n = Math.round((last - t) / 86400000);
+    bar.innerHTML = n <= 0
+      ? `<span>🏖 夏休みは今日まで!宿題の出し忘れはない?</span><span class="n">最終日</span>`
+      : `<span>🏖 夏休みは残り</span><span class="n">あと${n}日</span>`;
+    bar.hidden = false;
+    return;
+  }
   for(const ex of EXAMS){
     if(t > parseDate(ex.end)) continue;
     const s = parseDate(ex.start);
@@ -317,6 +330,24 @@ function updateExamBar(){
   bar.hidden = true;
 }
 
+/* ---------- seasonal UI (goal title / visible types) ---------- */
+function applySeason(){
+  document.getElementById("goalTitleText").textContent =
+    isSummer() ? "🏁 夏休みの目標" : "🏁 わたしの目標宣言";
+  const summer = isSummer();
+  // hide exam-related type choices during summer (filter + form)
+  document.querySelectorAll('#filterChips button[data-f="exam"], #filterChips button[data-f="quiz"]')
+    .forEach(b=> b.style.display = summer ? "none" : "");
+  document.querySelectorAll('#typeChips button[data-type="exam"], #typeChips button[data-type="quiz"]')
+    .forEach(b=> b.style.display = summer ? "none" : "");
+  // if the current filter is a hidden type, fall back to all
+  if(summer && (filter === "exam" || filter === "quiz")){
+    filter = "all";
+    [...document.getElementById("filterChips").children]
+      .forEach(x=>x.classList.toggle("on", x.dataset.f === "all"));
+  }
+}
+
 /* ---------- render list ---------- */
 const listEl = document.getElementById("list");
 const soonEl = document.getElementById("soon");
@@ -324,6 +355,7 @@ const countEl = document.getElementById("count");
 
 function render(){
   updateExamBar();
+  applySeason();
   const open = tasks.filter(t=>!t.done).length;
   countEl.textContent = tasks.length ? `残り ${open} 件 / 全 ${tasks.length} 件` : "";
 
