@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>提出物管理</title>
-<meta name="description" content="宿題・週末課題・考査提出物・小テストの期限を管理するアプリ">
+<meta name="description" content="提出物・小テストの期限を管理するアプリ">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -13,15 +13,17 @@
 <meta name="theme-color" content="#F5F6F3">
 <style>
 :root{
-  --paper:#F5F6F3; --ink:#1E2A3A; --marker:#FFE24D; --marker-soft:#FFF3B8;
-  --alert:#E0492F; --alert-soft:#FBE3DD; --muted:#7A8494; --line:#E2E5E0;
-  --card:#FFFFFF; --radius:14px;
+  --paper:#F5F6F3; --ink:#1E2A3A; --marker:#FFE24D;
+  --alert:#E0492F; --alert-soft:#FBE3DD;
+  --warn:#E08A2F; --warn-soft:#FCEFD9;
+  --muted:#7A8494; --line:#E2E5E0;
+  --card:#FFFFFF; --radius:16px;
   --sans:"Hiragino Sans","Hiragino Kaku Gothic ProN","BIZ UDPGothic","Yu Gothic",system-ui,sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{-webkit-text-size-adjust:100%}
 body{font-family:var(--sans);background:var(--paper);color:var(--ink);
-  font-size:15px;line-height:1.6;padding-bottom:96px;
+  font-size:15px;line-height:1.6;padding-bottom:110px;
   padding-top:env(safe-area-inset-top);}
 button{font-family:inherit;font-size:inherit;cursor:pointer;border:none;background:none;color:inherit}
 input,select,textarea{font-family:inherit;font-size:16px;color:var(--ink);
@@ -30,443 +32,559 @@ input,select,textarea{font-family:inherit;font-size:16px;color:var(--ink);
 input:focus,select:focus,textarea:focus{border-color:var(--ink)}
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
 
-/* ---- header ---- */
-header{padding:18px 18px 6px}
-.htop{display:flex;align-items:baseline;justify-content:space-between}
-header h1{font-size:20px;font-weight:800;letter-spacing:.02em}
+/* ---------- header ---------- */
+header{padding:16px 18px 4px;display:flex;align-items:baseline;justify-content:space-between}
+header h1{font-size:19px;font-weight:800;letter-spacing:.02em}
 header h1 .hl{background:linear-gradient(transparent 58%, var(--marker) 58%);padding:0 2px}
 header .count{font-size:12px;color:var(--muted)}
-/* exam countdown bar */
-.examBar{margin-top:12px;background:var(--ink);color:#fff;border-radius:var(--radius);
-  padding:10px 14px;font-size:13.5px;display:flex;align-items:center;justify-content:space-between;gap:8px}
-.examBar .n{font-weight:900;font-size:17px;color:var(--marker);white-space:nowrap}
 
-/* ---- soon banner ---- */
-.soon{margin:8px 18px 0;background:var(--alert-soft);border-radius:var(--radius);
-  padding:12px 14px;font-size:13.5px}
-.soon b{color:var(--alert)}
-.soon ul{list-style:none;margin-top:4px}
-.soon li{display:flex;justify-content:space-between;gap:8px}
-.soon li span:last-child{white-space:nowrap;font-weight:700;color:var(--alert)}
+/* ---------- tabs ---------- */
+.tabs{display:flex;gap:6px;padding:10px 18px 0}
+.tabs button{flex:1;padding:9px 4px;border-radius:11px;font-size:13.5px;font-weight:700;
+  background:#EDEFEA;color:var(--muted);transition:.15s}
+.tabs button.on{background:var(--ink);color:#fff}
 
-/* ---- goal card ---- */
-.goal{margin:14px 18px 0;background:var(--card);border-radius:var(--radius);
-  border:1.5px solid var(--line);overflow:hidden}
-.goal>button{width:100%;display:flex;justify-content:space-between;align-items:center;
-  padding:12px 14px;font-weight:700;font-size:14px;text-align:left}
-.goal>button .chev{color:var(--muted);transition:transform .2s}
-.goal.open>button .chev{transform:rotate(90deg)}
-.goal .body{display:none;padding:0 14px 14px}
-.goal.open .body{display:block}
-.goal label{display:block;font-size:12px;color:var(--muted);font-weight:700;margin:10px 0 4px}
-.goal .saved{font-size:12px;color:var(--muted);margin-top:8px;min-height:1em}
+/* ---------- warning ---------- */
+.warnBox{margin:14px 18px 0;border-radius:var(--radius);padding:13px 15px;font-size:13.5px;
+  background:var(--warn-soft);border-left:5px solid var(--warn)}
+.warnBox.hot{background:var(--alert-soft);border-left-color:var(--alert)}
+.warnBox b{display:block;font-size:14px;margin-bottom:2px}
+.warnBox .sub{color:var(--muted);font-size:12.5px}
 
-/* ---- filter chips ---- */
-.filter{display:flex;gap:8px;overflow-x:auto;padding:14px 18px 0;-webkit-overflow-scrolling:touch}
-.filter::-webkit-scrollbar{display:none}
-.filter button{flex:none;border:1.5px solid var(--line);background:var(--card);border-radius:999px;
-  padding:6px 13px;font-size:13px;font-weight:700;color:var(--muted);white-space:nowrap}
-.filter button.on{background:var(--ink);color:var(--marker);border-color:var(--ink)}
+/* ---------- focus card (1画面1タスク) ---------- */
+.focusWrap{padding:14px 18px 0}
+.focusCard{background:var(--card);border-radius:20px;padding:22px 20px 20px;
+  box-shadow:0 2px 14px rgba(30,42,58,.07);border-top:6px solid var(--muted);text-align:center}
+.focusCard .badges{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:10px}
+.focusCard .badge{font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:99px;
+  background:#EDEFEA;color:var(--muted)}
+.focusCard .subj{font-size:21px;font-weight:800;line-height:1.35}
+.focusCard .body{font-size:14.5px;color:var(--muted);margin-top:5px;word-break:break-word}
+.focusCard .thumb{margin-top:12px}
+.focusCard .thumb img{max-width:100%;max-height:190px;border-radius:12px;border:1px solid var(--line)}
+.focusCard .left{margin-top:16px;font-size:15px;font-weight:700}
+.focusCard .left .n{font-size:34px;font-weight:900;letter-spacing:-.02em;vertical-align:-3px;margin:0 3px}
+.focusCard.c-calm{border-top-color:var(--muted)}
+.focusCard.c-calm .left{color:var(--muted)}
+.focusCard.c-warn{border-top-color:var(--warn)}
+.focusCard.c-warn .left{color:var(--warn)}
+.focusCard.c-hot{border-top-color:var(--alert)}
+.focusCard.c-hot .left{color:var(--alert)}
 
-/* ---- task list ---- */
-main{padding:14px 18px 0;display:flex;flex-direction:column;gap:12px}
-.empty{color:var(--muted);text-align:center;padding:48px 24px;font-size:14px}
-.empty .big{font-size:34px;display:block;margin-bottom:8px}
-.card{background:var(--card);border-radius:var(--radius);border:1.5px solid var(--line);
-  padding:14px;position:relative}
-.card.weekend{background:#FFFCEB}
-.card.done{opacity:.55}
-.card.done .title{text-decoration:line-through}
-.card .top{display:flex;gap:10px;align-items:flex-start}
-.card .chk{flex:none;width:26px;height:26px;border-radius:50%;border:2px solid var(--line);
-  background:var(--card);margin-top:2px;display:grid;place-items:center;font-size:14px;color:transparent}
-.card.done .chk{background:var(--ink);border-color:var(--ink);color:var(--marker)}
+.goBtn{margin-top:18px;width:100%;background:var(--ink);color:#fff;font-size:17px;font-weight:800;
+  padding:17px;border-radius:15px;letter-spacing:.02em}
+.goBtn:active{transform:scale(.985)}
+.goBtn.started{background:#EDEFEA;color:var(--muted);font-size:15px;font-weight:700}
+.subActs{display:flex;gap:8px;margin-top:10px}
+.subActs button{flex:1;background:#EDEFEA;border-radius:11px;padding:11px 4px;
+  font-size:13px;font-weight:700;color:var(--ink)}
+.subActs button.done2{background:var(--marker)}
+.more{display:block;width:100%;text-align:center;margin-top:14px;
+  font-size:13.5px;color:var(--muted);font-weight:700;padding:6px}
+
+/* ---------- cheer ---------- */
+.cheer{margin:14px 18px 0;background:var(--card);border-radius:var(--radius);
+  padding:15px 16px;font-size:14px;text-align:center;box-shadow:0 1px 8px rgba(30,42,58,.05)}
+.cheer .big{font-size:30px;display:block;margin-bottom:4px}
+.cheer .sub{font-size:12.5px;color:var(--muted);margin-top:4px}
+
+/* ---------- list ---------- */
+#list{padding:12px 18px 0;display:flex;flex-direction:column;gap:10px}
+.card{background:var(--card);border-radius:var(--radius);padding:13px 14px;
+  box-shadow:0 1px 6px rgba(30,42,58,.05);border-left:5px solid var(--muted)}
+.card.done{opacity:.5}
+.card .top{display:flex;gap:11px;align-items:flex-start}
 .card .info{flex:1;min-width:0}
-.card .subj{font-size:11.5px;font-weight:800;letter-spacing:.04em;color:var(--muted);
-  display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.badge{display:inline-block;font-size:10.5px;font-weight:800;border-radius:999px;
-  padding:1px 8px;background:var(--paper);border:1px solid var(--line);color:var(--muted)}
-.badge.weekend{background:var(--marker);border-color:var(--marker);color:var(--ink)}
-.badge.exam{background:var(--ink);border-color:var(--ink);color:#fff}
-.badge.quiz{background:var(--card);border-color:var(--ink);color:var(--ink)}
-.card .title{font-size:15.5px;font-weight:700;overflow-wrap:anywhere}
-.card .dates{margin-top:6px;font-size:12.5px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 14px}
-.card .focus{margin-top:6px;font-size:12.5px;color:var(--muted);background:var(--paper);
-  border-radius:8px;padding:6px 9px}
-.card.weekend .focus{background:#FFF6D6}
-/* signature: highlighter countdown */
-.due{flex:none;text-align:center;min-width:64px}
-.due .n{display:inline-block;font-size:21px;font-weight:900;line-height:1.25;padding:0 6px;
-  background:linear-gradient(transparent 52%, var(--marker) 52%)}
-.due.warn .n{background:linear-gradient(transparent 52%, #FFC24D 52%)}
-.due.over .n,.due.today .n{background:linear-gradient(transparent 52%, var(--alert) 52%);color:#fff;
-  background:var(--alert);border-radius:8px;padding:1px 8px}
-.due .l{font-size:10.5px;color:var(--muted);font-weight:700;margin-top:2px}
-.card .acts{display:flex;gap:8px;margin-top:12px}
-.card .acts button{flex:1;border:1.5px solid var(--line);border-radius:10px;padding:8px 4px;
-  font-size:12.5px;font-weight:700;background:var(--card)}
-.card .acts .ics{background:var(--ink);color:#fff;border-color:var(--ink)}
-.card .acts .del{flex:0 0 44px;color:var(--muted)}
+.card .subj{font-size:12.5px;font-weight:700;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.card .tag{font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:99px;background:#EDEFEA;color:var(--muted)}
+.card .title{font-size:14.5px;font-weight:700;margin-top:3px;word-break:break-word}
+.card .meta{font-size:12px;color:var(--muted);margin-top:3px}
+.card .due{text-align:center;min-width:52px}
+.card .due .n{font-size:19px;font-weight:900;display:block;line-height:1.1}
+.card .due .l{font-size:10px;color:var(--muted)}
+.card .due.warn .n{color:var(--warn)}
+.card .due.hot .n,.card .due.over .n{color:var(--alert)}
+.card .acts{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.card .acts button{background:#EDEFEA;border-radius:9px;padding:7px 11px;font-size:12px;font-weight:700}
+.card .acts .ics{background:var(--marker)}
+.card .acts .del{margin-left:auto;background:transparent;color:var(--muted)}
+.card .pin{display:inline-block;font-size:11px;font-weight:700;color:var(--alert);margin-top:5px}
+.empty{text-align:center;color:var(--muted);padding:46px 20px;font-size:14px}
+.empty .big{font-size:40px;display:block;margin-bottom:8px}
+.secTtl{font-size:12px;font-weight:700;color:var(--muted);margin:6px 0 -2px;padding-left:2px}
 
-/* ---- FAB ---- */
-.fab{position:fixed;right:18px;bottom:calc(20px + env(safe-area-inset-bottom));
-  width:58px;height:58px;border-radius:50%;background:var(--ink);color:var(--marker);
-  font-size:30px;font-weight:400;box-shadow:0 6px 18px rgba(30,42,58,.3);z-index:20;
-  display:grid;place-items:center;line-height:1}
+/* ---------- fab ---------- */
+.fab{position:fixed;right:18px;bottom:calc(22px + env(safe-area-inset-bottom));
+  width:62px;height:62px;border-radius:50%;background:var(--ink);color:#fff;
+  font-size:31px;line-height:1;box-shadow:0 5px 18px rgba(30,42,58,.3);z-index:20}
 
-/* ---- sheet (form) ---- */
-.scrim{position:fixed;inset:0;background:rgba(30,42,58,.4);z-index:30;display:none}
-.scrim.show{display:block}
-.sheet{position:fixed;left:0;right:0;bottom:0;z-index:31;background:var(--paper);
-  border-radius:20px 20px 0 0;max-height:88vh;overflow-y:auto;display:none;
-  padding:18px 18px calc(24px + env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch}
-.sheet.show{display:block}
-.sheet h2{font-size:17px;font-weight:800;margin-bottom:14px}
-.sheet .field{margin-bottom:14px}
-.sheet label{display:block;font-size:12.5px;font-weight:800;margin-bottom:5px}
-.sheet label .opt{color:var(--muted);font-weight:400;font-size:11.5px}
-.chips{display:flex;flex-wrap:wrap;gap:8px}
-.chips button{border:1.5px solid var(--line);background:var(--card);border-radius:999px;
-  padding:7px 14px;font-size:13.5px;font-weight:700}
-.chips button.on{background:var(--ink);color:var(--marker);border-color:var(--ink)}
-#catChips button.on{background:var(--c);color:#fff;border-color:var(--c)}
-#typeChips button.on{background:var(--ink);color:var(--marker);border-color:var(--ink)}
-.sheet .row{display:flex;gap:10px}
-.sheet .row>div{flex:1}
-.sheet .save{width:100%;background:var(--ink);color:#fff;border-radius:12px;
-  padding:14px;font-size:16px;font-weight:800;margin-top:4px}
-.sheet .cancel{width:100%;padding:12px;color:var(--muted);font-weight:700}
-.hint{font-size:11.5px;color:var(--muted);margin-top:5px}
+/* ---------- sheet ---------- */
+.scrim{position:fixed;inset:0;background:rgba(30,42,58,.45);opacity:0;pointer-events:none;
+  transition:.2s;z-index:30}
+.scrim.show{opacity:1;pointer-events:auto}
+.sheet{position:fixed;left:0;right:0;bottom:0;background:var(--paper);z-index:40;
+  border-radius:22px 22px 0 0;padding:18px 18px calc(26px + env(safe-area-inset-bottom));
+  max-height:92vh;overflow-y:auto;transform:translateY(100%);transition:transform .25s;
+  box-shadow:0 -4px 24px rgba(30,42,58,.18)}
+.sheet.show{transform:translateY(0)}
+.sheet h2{font-size:17px;font-weight:800;margin-bottom:4px}
+.sheet .lead{font-size:12.5px;color:var(--muted);margin-bottom:14px}
+.field{margin-bottom:15px}
+.field label{display:block;font-size:12.5px;font-weight:700;margin-bottom:6px}
+.field .req{color:var(--alert);font-size:11px;margin-left:3px}
+.field .opt{color:var(--muted);font-weight:400;font-size:11px;margin-left:3px}
+.hint{font-size:11.5px;color:var(--muted);margin-top:5px;line-height:1.5}
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chips button{background:var(--card);border:1.5px solid var(--line);border-radius:99px;
+  padding:8px 13px;font-size:13px;font-weight:700;transition:.12s}
+.chips button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.chips.cat button.on{background:var(--c,var(--ink));border-color:var(--c,var(--ink))}
+.divider{border-top:1.5px dashed var(--line);margin:20px 0 15px;position:relative}
+.divider span{position:absolute;top:-10px;left:50%;transform:translateX(-50%);
+  background:var(--paper);padding:0 12px;font-size:11.5px;color:var(--muted);font-weight:700}
+.photoBox{display:flex;gap:8px;align-items:center}
+.photoBox button{background:var(--card);border:1.5px solid var(--line);border-radius:10px;
+  padding:11px 14px;font-size:13.5px;font-weight:700;white-space:nowrap}
+.photoBox .prev{flex:1;min-width:0}
+.photoBox .prev img{max-height:74px;border-radius:8px;border:1px solid var(--line)}
+.save{width:100%;background:var(--ink);color:#fff;font-size:16px;font-weight:800;
+  padding:16px;border-radius:14px;margin-top:6px}
+.cancel{width:100%;padding:13px;font-size:14px;color:var(--muted);margin-top:6px}
+
+/* ---------- toast ---------- */
+.toast{position:fixed;left:50%;bottom:110px;transform:translate(-50%,14px);
+  background:var(--ink);color:#fff;padding:13px 22px;border-radius:99px;font-size:14.5px;
+  font-weight:700;opacity:0;pointer-events:none;transition:.25s;z-index:50;white-space:nowrap}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+
+/* ---------- photo viewer ---------- */
+.viewer{position:fixed;inset:0;background:rgba(30,42,58,.92);z-index:60;display:none;
+  align-items:center;justify-content:center;padding:20px}
+.viewer.show{display:flex}
+.viewer img{max-width:100%;max-height:84vh;border-radius:10px}
+.viewer .close{position:absolute;top:calc(16px + env(safe-area-inset-top));right:18px;
+  color:#fff;font-size:30px;line-height:1}
 </style>
 </head>
 <body>
 
 <header>
-  <div class="htop">
-    <h1><span class="hl">提出物</span>管理</h1>
-    <span class="count" id="count"></span>
-  </div>
-  <div class="examBar" id="examBar" hidden></div>
+  <h1><span class="hl">提出物</span>管理</h1>
+  <span class="count" id="count"></span>
 </header>
 
-<div class="soon" id="soon" hidden></div>
-
-<section class="goal" id="goal">
-  <button type="button" id="goalToggle">
-    <span id="goalTitleText">🏁 わたしの目標宣言</span><span class="chev">›</span>
-  </button>
-  <div class="body">
-    <label for="gPurpose">目的(なぜ頑張るのか)</label>
-    <input id="gPurpose" placeholder="例:2学期の授業に余裕をもって取り組むため">
-    <label for="gGoal">目標(いつまでに・何を達成するか)</label>
-    <input id="gGoal" placeholder="例:中間考査で数学80点/学年20位以内">
-    <label for="gFirst">最初にすること</label>
-    <input id="gFirst" placeholder="例:今週中にワークP.10まで進める">
-    <div class="saved" id="gSaved"></div>
-  </div>
-</section>
-
-<div class="filter" id="filterChips">
-  <button type="button" data-f="all" class="on">すべて</button>
-  <button type="button" data-f="hw">📗 宿題</button>
-  <button type="button" data-f="weekend">⭐ 週末課題</button>
-  <button type="button" data-f="exam">📝 考査提出</button>
-  <button type="button" data-f="quiz">✏️ 小テスト</button>
+<div class="tabs">
+  <button data-tab="now" class="on">今日やること</button>
+  <button data-tab="all">ぜんぶ見る</button>
 </div>
 
-<main id="list"></main>
+<div id="nowView">
+  <div id="warnBox"></div>
+  <div class="focusWrap" id="focusWrap"></div>
+</div>
+
+<div id="allView" hidden>
+  <div id="list"></div>
+</div>
 
 <button class="fab" id="fab" aria-label="追加">＋</button>
 
 <div class="scrim" id="scrim"></div>
-<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
-  <h2 id="sheetTitle">追加</h2>
+<div class="sheet" id="sheet">
+  <h2 id="sheetTitle">追加する</h2>
+  <p class="lead">かかる時間まで選べば登録できます。あとは書かなくてOK。</p>
 
   <div class="field">
-    <label>種類</label>
+    <label>種類 <span class="req">必須</span></label>
     <div class="chips" id="typeChips"></div>
   </div>
 
   <div class="field">
-    <label>教科等</label>
-    <div class="chips" id="catChips"></div>
-  </div>
-
-  <div class="field" id="subjField" hidden>
-    <label for="subjSel">科目</label>
-    <select id="subjSel"></select>
+    <label>科目 <span class="req">必須</span></label>
+    <div class="chips" id="subjChips"></div>
     <input id="subjFree" placeholder="科目名を入力" style="margin-top:8px" hidden>
   </div>
 
   <div class="field">
-    <label for="fContent" id="contentLabel">課題の内容・範囲</label>
-    <input id="fContent" placeholder="例:ワークP.10〜15/レポート提出">
-  </div>
-
-  <div class="row field">
-    <div>
-      <label for="fDue" id="dueLabel">提出期限</label>
-      <input type="date" id="fDue">
-    </div>
-    <div>
-      <label for="fTarget">自分の終了予定日 <span class="opt">任意</span></label>
-      <input type="date" id="fTarget">
-    </div>
+    <label id="dueLabel">提出日 <span class="req">必須</span></label>
+    <div class="chips" id="dueChips" style="margin-bottom:8px"></div>
+    <input type="date" id="fDue">
   </div>
 
   <div class="field">
-    <label>リマインド(複数選べます)</label>
-    <div class="chips" id="remChips"></div>
-    <div class="hint">「カレンダーに登録」ボタンを押すと、この設定でiPhone/Androidのカレンダー通知が届きます。</div>
+    <label>どれくらいかかりそう? <span class="req">必須</span></label>
+    <div class="chips" id="loadChips"></div>
+    <div class="hint">だいたいで大丈夫です。これを元に「そろそろ始めよう」とお知らせします。</div>
+  </div>
+
+  <div class="divider"><span>ここから先は書かなくてOK</span></div>
+
+  <div class="field">
+    <label>写真 <span class="opt">任意</span></label>
+    <div class="photoBox">
+      <div class="prev" id="photoPrev"></div>
+      <button type="button" id="photoBtn">📷 黒板を撮る</button>
+      <button type="button" id="photoDel" hidden>削除</button>
+    </div>
+    <input type="file" id="photoInput" accept="image/*" hidden>
+    <div class="hint">黒板やプリントを撮っておけば、内容を打ち込まなくて済みます。</div>
   </div>
 
   <div class="field">
-    <label for="fFocus">意識すること <span class="opt">任意</span></label>
-    <input id="fFocus" placeholder="例:答えを写さず、まず自力で解く">
+    <label for="fContent" id="contentLabel">内容メモ <span class="opt">任意</span></label>
+    <input id="fContent" placeholder="例:ワークP.10〜15">
+  </div>
+
+  <div class="field">
+    <label for="fTarget">自分で終わらせる日 <span class="opt">任意</span></label>
+    <input type="date" id="fTarget">
   </div>
 
   <button class="save" id="saveBtn">保存する</button>
   <button class="cancel" id="cancelBtn">キャンセル</button>
 </div>
 
+<div class="toast" id="toast"></div>
+<div class="viewer" id="viewer"><span class="close" id="viewerClose">✕</span><img id="viewerImg" alt=""></div>
+
 <script>
 "use strict";
-/* ---------- data ---------- */
-const SUBJECTS = {
-  "国語": ["文学国語(必修)","基礎古典(選択)"],
-  "地歴・公民": ["公共(必修)","世界史探究(選択)","日本史探究(選択)","地理探求(選択)"],
-  "数学": ["数学Ⅱ(必修)","数学B(選択)"],
-  "理科": ["物理基礎(必修)","生物基礎(必修)","化学(選択)"],
-  "保健体育": ["保健(必修)"],
-  "英語": ["英語コミュⅡ(必修)","論理表現Ⅱ(必修)"],
-  "家庭": ["家庭基礎(必修)"],
-  "その他": ["探究(必修)"],
-  "学年・進路等": ["学年共通の課題・提出物"]
+
+/* ===== 科目(使用頻度順に並び替わる) ===== */
+const SUBJECTS = [
+  {name:"文学国語",   cat:"国語"},
+  {name:"基礎古典",   cat:"国語"},
+  {name:"公共",       cat:"地歴公民"},
+  {name:"世界史探究", cat:"地歴公民"},
+  {name:"日本史探究", cat:"地歴公民"},
+  {name:"地理探求",   cat:"地歴公民"},
+  {name:"数学Ⅱ",     cat:"数学"},
+  {name:"数学B",      cat:"数学"},
+  {name:"物理基礎",   cat:"理科"},
+  {name:"生物基礎",   cat:"理科"},
+  {name:"化学",       cat:"理科"},
+  {name:"保健",       cat:"保健体育"},
+  {name:"英語コミュⅡ", cat:"英語"},
+  {name:"論理表現Ⅱ", cat:"英語"},
+  {name:"家庭基礎",   cat:"家庭"},
+  {name:"探究",       cat:"その他"},
+  {name:"学年から",   cat:"学年"}
+];
+const CAT_COLOR = {
+  "国語":"#D64545", "地歴公民":"#9C6B3C", "数学":"#2E6FD6", "理科":"#2E9E5B",
+  "保健体育":"#ED7D31", "英語":"#7B5BD6", "家庭":"#D65B9E",
+  "その他":"#2E9EA6", "学年":"#5A6B85", "自由":"#7A8494"
 };
-const CAT_META = {
-  "国語":        {color:"#D64545", icon:"📖"},
-  "地歴・公民":  {color:"#9C6B3C", icon:"🗺️"},
-  "数学":        {color:"#2E6FD6", icon:"📐"},
-  "理科":        {color:"#2E9E5B", icon:"🧪"},
-  "保健体育":    {color:"#ED7D31", icon:"🏃"},
-  "英語":        {color:"#7B5BD6", icon:"💬"},
-  "家庭":        {color:"#D65B9E", icon:"🍳"},
-  "その他":      {color:"#2E9EA6", icon:"🔍"},
-  "学年・進路等":{color:"#5A6B85", icon:"🏫"}
-};
-const FREE = "その他(自由入力)";
+const FREE = "その他";
+
 const TYPES = {
-  hw:      {label:"宿題",     icon:"📗", noun:"課題",      dueLabel:"提出期限", dateWord:"提出",   icsTag:"提出"},
-  weekend: {label:"週末課題", icon:"⭐", noun:"週末課題",  dueLabel:"提出期限", dateWord:"提出",   icsTag:"提出"},
-  exam:    {label:"考査提出", icon:"📝", noun:"考査提出物",dueLabel:"提出期限", dateWord:"提出",   icsTag:"提出"},
-  quiz:    {label:"小テスト", icon:"✏️", noun:"小テスト",  dueLabel:"テスト日", dateWord:"テスト", icsTag:"小テスト"}
+  hw:   {label:"提出物",   icon:"📗", dueLabel:"提出日",   word:"提出",   icsTag:"提出"},
+  quiz: {label:"小テスト", icon:"✏️", dueLabel:"テスト日", word:"テスト", icsTag:"小テスト"}
 };
-/* 年度が変わったら、この考査日程を書き換えてください(YYYY-MM-DD) */
-const EXAMS = [
-  {name:"2学期中間考査", start:"2026-10-20", end:"2026-10-23"},
-  {name:"2学期期末考査", start:"2026-12-03", end:"2026-12-08"},
-  {name:"学年末考査",   start:"2027-03-01", end:"2027-03-04"}
-];
-/* 2学期始業日。この日より前は「夏休み仕様」(考査カウントダウン非表示・宿題/週末課題のみ)で動きます */
-const TERM2_START = "2026-09-01";
-function isSummer(){ return today0() < parseDate(TERM2_START); }
-const REMINDERS = [
-  {d:7, label:"1週間前"},{d:3,label:"3日前"},{d:2,label:"2日前"},
-  {d:1,label:"前日"},{d:0,label:"当日"}
-];
-const LS_TASKS = "teishutsu.tasks.v1";
-const LS_GOAL  = "teishutsu.goal.v1";
 
-let tasks = load(LS_TASKS, []);
-let goal  = load(LS_GOAL, {purpose:"",goal:"",first:""});
+/* かかる時間の3択。min=見積もり(分) */
+const LOADS = {
+  s: {label:"30分くらい",     min:30,  lead:1},
+  m: {label:"1時間くらい",    min:60,  lead:2},
+  l: {label:"2時間以上",      min:150, lead:4}
+};
+const BUFFER = 1.5;          // 見積もりは必ずずれる前提で 1.5 倍に見る
+const DAILY_MIN = 60;        // 平日に課題に使える時間の目安(分)
+
+const LS_TASKS = "teishutsu.tasks.v2";
+const LS_FREQ  = "teishutsu.freq.v1";
+const LS_OLD   = "teishutsu.tasks.v1";
+
+let tasks = load(LS_TASKS, null);
+let freq  = load(LS_FREQ, {});
+let tab = "now";
 let editingId = null;
-let selCat = null, selType = "hw", selReminders = [3,1];
-let filter = "all";
+let selType = "hw", selSubj = null, selLoad = "m", photoData = null;
 
-/* migrate old data (mode-based → type-based) */
-let migrated = false;
-tasks.forEach(t=>{
-  if(!t.type){ t.type = (t.mode === "exam") ? "exam" : "hw"; delete t.mode; migrated = true; }
-});
-if(migrated) saveTasks();
+/* 旧バージョン(v1)のデータを引き継ぐ */
+if(tasks === null){
+  const old = load(LS_OLD, []);
+  tasks = old.map(t=>({
+    id: t.id, type: (t.type === "quiz" ? "quiz" : "hw"),
+    subject: stripSuffix(t.subject || t.category || "その他"),
+    cat: guessCat(stripSuffix(t.subject || "")),
+    due: t.due, load: "m", content: t.content || "", target: t.target || null,
+    photo: null, done: !!t.done, submitted: !!t.done, started: null
+  })).filter(t=>t.due);
+  saveTasks();
+}
 
+function stripSuffix(s){ return String(s).replace(/[((](必修|選択)[))]/g,"").trim(); }
+function guessCat(name){ const f = SUBJECTS.find(s=>s.name===name); return f ? f.cat : "自由"; }
 function load(k, fb){ try{ const v = JSON.parse(localStorage.getItem(k)); return v ?? fb; }catch(e){ return fb; } }
-function saveTasks(){ localStorage.setItem(LS_TASKS, JSON.stringify(tasks)); }
+function saveTasks(){ try{ localStorage.setItem(LS_TASKS, JSON.stringify(tasks)); }
+  catch(e){ alert("保存できませんでした。写真が多すぎるかもしれません。古いものを削除してください。"); } }
+function saveFreq(){ localStorage.setItem(LS_FREQ, JSON.stringify(freq)); }
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function esc(s){ return (s||"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 
-/* ---------- dates ---------- */
+/* ===== 日付 ===== */
 function today0(){ const d = new Date(); d.setHours(0,0,0,0); return d; }
 function parseDate(s){ const [y,m,d] = s.split("-").map(Number); return new Date(y, m-1, d); }
+function toStr(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; }
 function daysUntil(s){ return Math.round((parseDate(s) - today0()) / 86400000); }
-function fmt(s){ const d = parseDate(s); const w = "日月火水木金土"[d.getDay()];
-  return `${d.getMonth()+1}/${d.getDate()}(${w})`; }
+function fmt(s){ const d = parseDate(s); return `${d.getMonth()+1}/${d.getDate()}(${"日月火水木金土"[d.getDay()]})`; }
 
-/* ---------- header bar (summer / exam countdown) ---------- */
-function updateExamBar(){
-  const bar = document.getElementById("examBar");
-  const t = today0();
-  if(isSummer()){
-    // last day of vacation = the day before TERM2_START
-    const last = parseDate(TERM2_START); last.setDate(last.getDate()-1);
-    const n = Math.round((last - t) / 86400000);
-    bar.innerHTML = n <= 0
-      ? `<span>🏖 夏休みは今日まで!宿題の出し忘れはない?</span><span class="n">最終日</span>`
-      : `<span>🏖 夏休みは残り</span><span class="n">あと${n}日</span>`;
-    bar.hidden = false;
-    return;
-  }
-  for(const ex of EXAMS){
-    if(t > parseDate(ex.end)) continue;
-    const s = parseDate(ex.start);
-    if(t >= s){
-      bar.innerHTML = `<span>📝 ${ex.name} 実施中(〜${fmt(ex.end)})</span><span class="n">がんばれ!</span>`;
-    } else {
-      const n = Math.round((s - t) / 86400000);
-      bar.innerHTML = `<span>📝 ${ex.name}(${fmt(ex.start)}〜)まで</span><span class="n">あと${n}日</span>`;
-    }
-    bar.hidden = false;
-    return;
-  }
-  bar.hidden = true;
+/* ===== 余裕の計算 =====
+   並び順は「締切が近い順」を絶対に崩さない。
+   余裕の計算は「警告を出すかどうか」の判定にだけ使う。 */
+function needMin(t){ return (LOADS[t.load] || LOADS.m).min * BUFFER; }
+
+/* その課題より前(同日含む)に締切が来るものの所要時間も足して、実際に使える時間を見る */
+function isTight(t){
+  const n = daysUntil(t.due);
+  if(n < 0) return true;
+  const earlier = openTasks().filter(x => x.due <= t.due);
+  const totalNeed = earlier.reduce((s,x)=> s + needMin(x), 0);
+  const usable = Math.max(n, 0) * DAILY_MIN + DAILY_MIN;  // 今日の分も足す
+  return totalNeed > usable;
+}
+function openTasks(){ return tasks.filter(t=>!t.done || (t.type==="hw" && !t.submitted)); }
+function activeTasks(){ return tasks.filter(t=>!t.done); }
+
+/* 表示用の緊急度 */
+function heat(t){
+  const n = daysUntil(t.due);
+  if(n <= 0) return "hot";
+  if(n === 1 || isTight(t)) return "warn";
+  return "calm";
 }
 
-/* ---------- seasonal UI (goal title / visible types) ---------- */
-function applySeason(){
-  document.getElementById("goalTitleText").textContent =
-    isSummer() ? "🏁 夏休みの目標" : "🏁 わたしの目標宣言";
-  const summer = isSummer();
-  // hide exam-related type choices during summer (filter + form)
-  document.querySelectorAll('#filterChips button[data-f="exam"], #filterChips button[data-f="quiz"]')
-    .forEach(b=> b.style.display = summer ? "none" : "");
-  document.querySelectorAll('#typeChips button[data-type="exam"], #typeChips button[data-type="quiz"]')
-    .forEach(b=> b.style.display = summer ? "none" : "");
-  // if the current filter is a hidden type, fall back to all
-  if(summer && (filter === "exam" || filter === "quiz")){
-    filter = "all";
-    [...document.getElementById("filterChips").children]
-      .forEach(x=>x.classList.toggle("on", x.dataset.f === "all"));
-  }
-}
+/* 並び順:締切が近い順(これは動かさない)。同日なら重いほうを先に。 */
+function byDue(a,b){ return a.due.localeCompare(b.due) || needMin(b) - needMin(a); }
 
-/* ---------- render list ---------- */
+/* ===== 描画 ===== */
+const warnBox = document.getElementById("warnBox");
+const focusWrap = document.getElementById("focusWrap");
 const listEl = document.getElementById("list");
-const soonEl = document.getElementById("soon");
 const countEl = document.getElementById("count");
 
 function render(){
-  updateExamBar();
-  applySeason();
-  const open = tasks.filter(t=>!t.done).length;
-  countEl.textContent = tasks.length ? `残り ${open} 件 / 全 ${tasks.length} 件` : "";
+  const act = activeTasks();
+  const unsent = tasks.filter(t=>t.done && t.type==="hw" && !t.submitted).length;
+  countEl.textContent = act.length ? `のこり ${act.length} 件` : "";
 
-  // banner: due within 3 days or overdue (not done) — always across all types
-  const soon = tasks.filter(t=>!t.done && daysUntil(t.due) <= 3)
-                    .sort((a,b)=>a.due.localeCompare(b.due));
-  if(soon.length){
-    soonEl.hidden = false;
-    soonEl.innerHTML = `<b>⚠️ まもなく締切・テスト</b><ul>` + soon.map(t=>{
-      const n = daysUntil(t.due);
-      const m = CAT_META[t.category] || {icon:"📄"};
-      const w = n < 0 ? `${-n}日超過` : n === 0 ? "今日" : `あと${n}日`;
-      return `<li><span>${m.icon} ${esc(t.subject)}:${esc(t.content||"")}</span><span>${w}</span></li>`;
-    }).join("") + `</ul>`;
-  } else soonEl.hidden = true;
+  document.getElementById("nowView").hidden = tab !== "now";
+  document.getElementById("allView").hidden = tab !== "all";
+  if(tab === "now") renderNow(act, unsent); else renderAll();
+}
 
-  const visible = filter === "all" ? tasks : tasks.filter(t=>t.type === filter);
-  if(!visible.length){
-    const msg = filter === "all"
-      ? "まだ何も登録されていません。"
-      : `「${TYPES[filter].label}」はまだ登録されていません。`;
-    listEl.innerHTML = `<div class="empty"><span class="big">📚</span>
-      ${msg}<br>右下の「＋」から追加しましょう。</div>`;
+/* --- 今日やること:1画面1タスク --- */
+function renderNow(act, unsent){
+  if(!act.length){
+    warnBox.innerHTML = "";
+    focusWrap.innerHTML = unsent
+      ? `<div class="cheer"><span class="big">📮</span><b>出すのを忘れていませんか?</b>
+           <div class="sub">終わったのに、まだ出していないものが ${unsent} 件あります。<br>
+           「ぜんぶ見る」から確認できます。</div></div>`
+      : `<div class="cheer"><span class="big">🎉</span><b>いまやることはありません</b>
+           <div class="sub">新しい課題が出たら「＋」で登録しておきましょう。</div></div>`;
     return;
   }
-  const sorted = [...visible].sort((a,b)=> (a.done - b.done) || a.due.localeCompare(b.due));
-  listEl.innerHTML = sorted.map(cardHTML).join("");
+  const sorted = [...act].sort(byDue);
+  const t = sorted[0];
+
+  /* 警告:1番目より後ろにある「今始めないと危ないもの」だけを拾う */
+  const hidden = sorted.slice(1).filter(isTight);
+  const sameDay = sorted.filter(x=>x.due === t.due);
+  let html = "";
+  if(sameDay.length >= 3){
+    /* 同じ日に固まっているほうが伝わりやすいので、こちらを優先して出す */
+    const tot = sameDay.reduce((s,x)=>s + (LOADS[x.load]||LOADS.m).min, 0);
+    html = `<div class="warnBox hot"><b>⚠️ ${fmt(t.due)}に ${sameDay.length}件 重なっています</b>
+      <span class="sub">ぜんぶで${tot >= 60 ? Math.round(tot/60*10)/10+"時間" : tot+"分"}ぶん。今日から始めないと厳しいです。</span></div>`;
+  } else if(hidden.length){
+    const h = hidden[0];
+    const more = hidden.length > 1 ? `ほか${hidden.length-1}件も` : "";
+    html = `<div class="warnBox"><b>⚠️ ${esc(h.subject)}(${LOADS[h.load].label})${more}、
+      今日から始めないと厳しいです</b>
+      <span class="sub">${TYPES[h.type].word}は ${fmt(h.due)}。まず下のものを片づけて、少しだけ手をつけておこう。</span></div>`;
+  }
+  warnBox.innerHTML = html;
+
+  const tp = TYPES[t.type], n = daysUntil(t.due), hc = heat(t);
+  const left = n < 0 ? `<span class="n">${-n}</span>日すぎています`
+             : n === 0 ? `今日が${tp.word}日`
+             : n === 1 ? `${tp.word}まで<span class="n">あと1</span>日`
+             : `${tp.word}まで<span class="n">あと${n}</span>日`;
+  const startedToday = t.started === toStr(today0());
+
+  focusWrap.innerHTML = `
+    <div class="focusCard c-${hc}">
+      <div class="badges">
+        <span class="badge" style="color:${CAT_COLOR[t.cat]||"#7A8494"}">${tp.icon} ${tp.label}</span>
+        <span class="badge">${fmt(t.due)}まで</span>
+      </div>
+      <div class="subj">${esc(t.subject)}</div>
+      ${t.content ? `<div class="body">${esc(t.content)}</div>` : ""}
+      ${t.photo ? `<div class="thumb"><img src="${t.photo}" data-photo="${t.id}" alt="登録した写真"></div>` : ""}
+      <div class="left">${left}</div>
+      <button class="goBtn${startedToday ? " started" : ""}" data-act="go" data-id="${t.id}">
+        ${startedToday ? "✓ 今日はもう手をつけた" : "まず15分、やってみる"}
+      </button>
+      <div class="subActs">
+        <button data-act="done" data-id="${t.id}">終わった</button>
+        <button class="ics" data-act="ics" data-id="${t.id}">📅 カレンダーに入れる</button>
+      </div>
+    </div>
+    ${act.length > 1 ? `<button class="more" data-act="tab-all">ほかに ${act.length-1} 件 →</button>` : ""}`;
+}
+
+/* --- ぜんぶ見る --- */
+function renderAll(){
+  const act = [...activeTasks()].sort(byDue);
+  const unsent = tasks.filter(t=>t.done && t.type==="hw" && !t.submitted).sort(byDue);
+  const fin = tasks.filter(t=>t.done && (t.type==="quiz" || t.submitted)).sort((a,b)=>b.due.localeCompare(a.due));
+
+  if(!tasks.length){
+    listEl.innerHTML = `<div class="empty"><span class="big">📚</span>
+      まだ何も登録されていません。<br>右下の「＋」から追加しましょう。</div>`;
+    return;
+  }
+  let html = "";
+  if(unsent.length){
+    html += `<div class="secTtl">📮 終わったけど、まだ出していない</div>`;
+    html += unsent.map(cardHTML).join("");
+  }
+  if(act.length){
+    html += `<div class="secTtl">これからやる</div>` + act.map(cardHTML).join("");
+  }
+  if(fin.length){
+    html += `<div class="secTtl">おわったもの</div>` + fin.slice(0,20).map(cardHTML).join("");
+  }
+  listEl.innerHTML = html;
 }
 
 function cardHTML(t){
-  const tp = TYPES[t.type] || TYPES.hw;
-  const n = daysUntil(t.due);
-  let cls = "", num = `${n}`, lab = "あと(日)";
-  if(t.done){ num = "✓"; lab = "完了"; }
-  else if(n < 0){ cls = "over"; num = `${-n}`; lab = "日超過"; }
-  else if(n === 0){ cls = "today"; num = "今日"; lab = t.type==="quiz" ? "テスト日" : "提出日"; }
-  else if(n <= 3){ cls = "warn"; }
-  const m = CAT_META[t.category] || {color:"var(--muted)", icon:"📄"};
-  const dates = [`${tp.dateWord} ${fmt(t.due)}`];
-  if(t.target) dates.push(`目標 ${fmt(t.target)}`);
-  const wk = t.type === "weekend" ? " weekend" : "";
-  return `<div class="card${t.done?" done":""}${wk}" data-id="${t.id}" style="border-left:5px solid ${m.color}">
+  const tp = TYPES[t.type], n = daysUntil(t.due);
+  const finished = t.done && (t.type==="quiz" || t.submitted);
+  let cls = "", num = `${n}`, lab = "日";
+  if(finished){ num = "✓"; lab = "完了"; }
+  else if(n < 0){ cls = "over"; num = `${-n}`; lab = "日すぎ"; }
+  else if(n === 0){ cls = "hot"; num = "今日"; lab = tp.word; }
+  else if(n === 1 || isTight(t)){ cls = "warn"; }
+  const color = CAT_COLOR[t.cat] || "#7A8494";
+  const waiting = t.done && t.type==="hw" && !t.submitted;
+
+  return `<div class="card${finished?" done":""}" data-id="${t.id}" style="border-left-color:${color}">
     <div class="top">
-      <button class="chk" data-act="toggle" aria-label="完了にする">✓</button>
       <div class="info">
-        <div class="subj">
-          <span style="color:${m.color}">${m.icon} ${esc(t.category)}${t.category !== t.subject ? "・" + esc(t.subject) : ""}</span>
-          <span class="badge ${t.type}">${tp.icon} ${tp.label}</span>
-        </div>
-        <div class="title">${esc(t.content) || "(内容メモなし)"}</div>
-        <div class="dates">${dates.map(d=>`<span>${d}</span>`).join("")}</div>
-        ${t.focus ? `<div class="focus">💡 ${esc(t.focus)}</div>` : ""}
+        <div class="subj"><span style="color:${color}">${esc(t.subject)}</span>
+          <span class="tag">${tp.icon} ${tp.label}</span>
+          <span class="tag">${LOADS[t.load]?LOADS[t.load].label:"1時間くらい"}</span></div>
+        <div class="title">${esc(t.content) || "(メモなし)"}</div>
+        <div class="meta">${tp.word} ${fmt(t.due)}${t.target ? ` ・ 自分の予定 ${fmt(t.target)}` : ""}</div>
+        ${waiting ? `<span class="pin">📮 まだ出していません</span>` : ""}
       </div>
       <div class="due ${cls}"><span class="n">${num}</span><div class="l">${lab}</div></div>
     </div>
     <div class="acts">
-      <button class="ics" data-act="ics">📅 カレンダーに登録</button>
+      ${t.type === "hw"
+        ? (!t.done ? `<button data-act="done">終わった</button>`
+          : !t.submitted ? `<button class="done2" data-act="submit">出した!</button>`
+          : `<button data-act="undo">戻す</button>`)
+        : (!t.done ? `<button data-act="done">勉強した</button>` : `<button data-act="undo">戻す</button>`)}
+      ${t.photo ? `<button data-act="photo">📷 写真</button>` : ""}
+      <button class="ics" data-act="ics">📅</button>
       <button data-act="edit">編集</button>
       <button class="del" data-act="del" aria-label="削除">🗑</button>
     </div>
   </div>`;
 }
 
-function esc(s){ return (s||"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
-
-listEl.addEventListener("click", e=>{
-  const btn = e.target.closest("button"); if(!btn) return;
-  const id = e.target.closest(".card").dataset.id;
-  const t = tasks.find(x=>x.id===id); if(!t) return;
+/* ===== 操作 ===== */
+document.body.addEventListener("click", e=>{
+  const img = e.target.closest("img[data-photo]");
+  if(img){ showPhoto(img.src); return; }
+  const btn = e.target.closest("button[data-act]"); if(!btn) return;
   const act = btn.dataset.act;
-  if(act==="toggle"){ t.done = !t.done; saveTasks(); render(); }
-  else if(act==="del"){ if(confirm("削除しますか?")){ tasks = tasks.filter(x=>x.id!==id); saveTasks(); render(); } }
-  else if(act==="edit"){ openSheet(t); }
-  else if(act==="ics"){ downloadICS(t); }
+  if(act === "tab-all"){ switchTab("all"); return; }
+  const id = btn.dataset.id || (e.target.closest(".card") && e.target.closest(".card").dataset.id);
+  const t = tasks.find(x=>x.id===id); if(!t) return;
+
+  if(act === "go"){
+    const key = toStr(today0());
+    if(t.started === key){ t.started = null; }
+    else { t.started = key; toast("よし、いってらっしゃい 🚶"); }
+    saveTasks(); render();
+  }
+  else if(act === "done"){
+    t.done = true;
+    if(t.type === "quiz"){ t.submitted = true; toast("おつかれさま! 🎉"); }
+    else { t.submitted = false; toast("あとは出すだけ! 📮"); }
+    saveTasks(); render();
+  }
+  else if(act === "submit"){ t.submitted = true; toast("出せました! 🎉"); saveTasks(); render(); }
+  else if(act === "undo"){ t.done = false; t.submitted = false; saveTasks(); render(); }
+  else if(act === "del"){ if(confirm("削除しますか?")){ tasks = tasks.filter(x=>x.id!==id); saveTasks(); render(); } }
+  else if(act === "edit"){ openSheet(t); }
+  else if(act === "ics"){ downloadICS(t); }
+  else if(act === "photo"){ showPhoto(t.photo); }
 });
 
-/* ---------- filter ---------- */
-const filterChips = document.getElementById("filterChips");
-filterChips.addEventListener("click", e=>{
+/* タブ */
+document.querySelector(".tabs").addEventListener("click", e=>{
   const b = e.target.closest("button"); if(!b) return;
-  filter = b.dataset.f;
-  [...filterChips.children].forEach(x=>x.classList.toggle("on", x===b));
-  render();
+  switchTab(b.dataset.tab);
 });
+function switchTab(name){
+  tab = name;
+  [...document.querySelector(".tabs").children].forEach(x=>x.classList.toggle("on", x.dataset.tab===tab));
+  render();
+  window.scrollTo({top:0});
+}
 
-/* ---------- ICS export ---------- */
+/* トースト */
+let toastTimer;
+function toast(msg){
+  const el = document.getElementById("toast");
+  el.textContent = msg; el.classList.add("show");
+  clearTimeout(toastTimer); toastTimer = setTimeout(()=>el.classList.remove("show"), 1900);
+}
+
+/* 写真ビューア */
+const viewer = document.getElementById("viewer");
+function showPhoto(src){ if(!src) return; document.getElementById("viewerImg").src = src; viewer.classList.add("show"); }
+viewer.addEventListener("click", ()=> viewer.classList.remove("show"));
+
+/* ===== ICS 書き出し ===== */
 function icsDate(s){ return s.replaceAll("-",""); }
-function nextDay(s){ const d = parseDate(s); d.setDate(d.getDate()+1);
-  return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}`; }
+function nextDay(s){ const d = parseDate(s); d.setDate(d.getDate()+1); return icsDate(toStr(d)); }
 function alarm(days, summary){
-  // alarms fire at 8:00 AM: N days before => -P(N-1)DT16H, same day => PT8H
   const trig = days === 0 ? "PT8H" : `-P${days-1}DT16H`;
   return ["BEGIN:VALARM","ACTION:DISPLAY",`DESCRIPTION:${summary}`,`TRIGGER:${trig}`,"END:VALARM"];
 }
 function vevent(dateStr, summary, reminders){
-  const lines = ["BEGIN:VEVENT",
-    `UID:${uid()}@teishutsu`,
+  const lines = ["BEGIN:VEVENT", `UID:${uid()}@teishutsu`,
     `DTSTAMP:${new Date().toISOString().replace(/[-:]/g,"").slice(0,15)}Z`,
-    `DTSTART;VALUE=DATE:${icsDate(dateStr)}`,
-    `DTEND;VALUE=DATE:${nextDay(dateStr)}`,
+    `DTSTART;VALUE=DATE:${icsDate(dateStr)}`, `DTEND;VALUE=DATE:${nextDay(dateStr)}`,
     `SUMMARY:${summary}`];
   reminders.forEach(d=> lines.push(...alarm(d, summary)));
   lines.push("END:VEVENT");
   return lines;
 }
+/* 着手日:かかる時間から逆算。締切までが短ければ自動で詰める */
+function startDate(t){
+  const lead = Math.min((LOADS[t.load]||LOADS.m).lead, Math.max(daysUntil(t.due), 0));
+  const d = parseDate(t.due); d.setDate(d.getDate() - lead);
+  return toStr(d);
+}
 function downloadICS(t){
-  const tp = TYPES[t.type] || TYPES.hw;
-  const rem = (t.reminders && t.reminders.length) ? t.reminders : [1,0];
+  const tp = TYPES[t.type];
+  const name = `${t.subject} ${t.content||""}`.trim();
   let lines = ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//teishutsu//JP","CALSCALE:GREGORIAN"];
-  lines.push(...vevent(t.due, `【${tp.icsTag}】${t.subject} ${t.content||""}`.trim(), rem));
-  if(t.target) lines.push(...vevent(t.target, `【目標】${t.subject} ${t.content||""} ここまでに終わらせる`.trim(), [0]));
+  /* 主役は「始める日」の通知 */
+  const sd = startDate(t);
+  if(sd !== t.due){
+    lines.push(...vevent(sd, `【そろそろ始める】${name}`, [0]));
+  }
+  lines.push(...vevent(t.due, `【${tp.icsTag}】${name}`, [1,0]));
+  if(t.target) lines.push(...vevent(t.target, `【自分の予定】${name} ここまでに終わらせる`, [0]));
   lines.push("END:VCALENDAR");
   const blob = new Blob([lines.join("\r\n")], {type:"text/calendar;charset=utf-8"});
   const a = document.createElement("a");
@@ -476,147 +594,169 @@ function downloadICS(t){
   setTimeout(()=>URL.revokeObjectURL(a.href), 5000);
 }
 
-/* ---------- goal card ---------- */
-const goalEl = document.getElementById("goal");
-document.getElementById("goalToggle").addEventListener("click", ()=> goalEl.classList.toggle("open"));
-const gP = document.getElementById("gPurpose"), gG = document.getElementById("gGoal"),
-      gF = document.getElementById("gFirst"), gS = document.getElementById("gSaved");
-gP.value = goal.purpose; gG.value = goal.goal; gF.value = goal.first;
-let gTimer;
-[gP,gG,gF].forEach(el=> el.addEventListener("input", ()=>{
-  goal = {purpose:gP.value, goal:gG.value, first:gF.value};
-  localStorage.setItem(LS_GOAL, JSON.stringify(goal));
-  gS.textContent = "保存しました";
-  clearTimeout(gTimer); gTimer = setTimeout(()=> gS.textContent = "", 1500);
-}));
-
-/* ---------- form sheet ---------- */
+/* ===== 入力シート ===== */
 const sheet = document.getElementById("sheet"), scrim = document.getElementById("scrim");
-const typeChips = document.getElementById("typeChips");
-const catChips = document.getElementById("catChips"), remChips = document.getElementById("remChips");
-const subjField = document.getElementById("subjField"), subjSel = document.getElementById("subjSel"),
-      subjFree = document.getElementById("subjFree");
+const typeChips = document.getElementById("typeChips"), subjChips = document.getElementById("subjChips");
+const dueChips = document.getElementById("dueChips"), loadChips = document.getElementById("loadChips");
+const subjFree = document.getElementById("subjFree");
 const fContent = document.getElementById("fContent"), fDue = document.getElementById("fDue"),
-      fTarget = document.getElementById("fTarget"), fFocus = document.getElementById("fFocus");
-const dueLabel = document.getElementById("dueLabel"), contentLabel = document.getElementById("contentLabel");
+      fTarget = document.getElementById("fTarget");
 
 typeChips.innerHTML = Object.entries(TYPES).map(([k,v])=>
   `<button type="button" data-type="${k}">${v.icon} ${v.label}</button>`).join("");
-catChips.innerHTML = Object.keys(SUBJECTS).map(c=>
-  `<button type="button" data-cat="${c}" style="--c:${CAT_META[c].color}">${CAT_META[c].icon} ${c}</button>`).join("");
-remChips.innerHTML = REMINDERS.map(r=>`<button type="button" data-d="${r.d}">${r.label}</button>`).join("");
+loadChips.innerHTML = Object.entries(LOADS).map(([k,v])=>
+  `<button type="button" data-load="${k}">${v.label}</button>`).join("");
 
-function applyTypeToForm(){
-  [...typeChips.children].forEach(x=>x.classList.toggle("on", x.dataset.type===selType));
-  const tp = TYPES[selType];
-  dueLabel.textContent = tp.dueLabel;
-  contentLabel.textContent = selType === "quiz" ? "テストの内容・範囲" : "課題の内容・範囲";
-  fContent.placeholder = selType === "quiz" ? "例:英単語No.1〜100/古文単語テスト" : "例:ワークP.10〜15/レポート提出";
-  document.getElementById("sheetTitle").textContent =
-    (editingId ? `${tp.noun}を編集` : `${tp.noun}を追加`);
-  /* 週末課題は学年からの課題が多いため、未選択なら学年・進路等を初期選択 */
-  if(selType === "weekend" && !selCat && !editingId){
-    selectCategory("学年・進路等");
-  }
+/* 締切のクイックボタン */
+function buildDueChips(){
+  const t0 = today0();
+  const opts = [{d:1,l:"明日"},{d:2,l:"あさって"},{d:3,l:"3日後"},{d:7,l:"1週間後"}];
+  const nextMon = (()=>{ const d = new Date(t0); const add = (8 - d.getDay()) % 7 || 7;
+    d.setDate(d.getDate()+add); return {date:toStr(d), l:"来週月曜"}; })();
+  dueChips.innerHTML = opts.map(o=>{
+    const d = new Date(t0); d.setDate(d.getDate()+o.d);
+    return `<button type="button" data-due="${toStr(d)}">${o.l}</button>`;
+  }).join("") + `<button type="button" data-due="${nextMon.date}">${nextMon.l}</button>`;
 }
+dueChips.addEventListener("click", e=>{
+  const b = e.target.closest("button"); if(!b) return;
+  fDue.value = b.dataset.due;
+  [...dueChips.children].forEach(x=>x.classList.toggle("on", x===b));
+});
+fDue.addEventListener("change", ()=> [...dueChips.children].forEach(x=>x.classList.toggle("on", x.dataset.due===fDue.value)));
+
+/* 科目:使用頻度順 */
+function buildSubjChips(){
+  const list = [...SUBJECTS].sort((a,b)=> (freq[b.name]||0) - (freq[a.name]||0));
+  subjChips.innerHTML = list.map(s=>
+    `<button type="button" data-subj="${s.name}" data-cat="${s.cat}" style="--c:${CAT_COLOR[s.cat]}">${s.name}</button>`
+  ).join("") + `<button type="button" data-subj="${FREE}" data-cat="自由" style="--c:${CAT_COLOR["自由"]}">${FREE}…</button>`;
+  subjChips.classList.add("cat");
+}
+subjChips.addEventListener("click", e=>{
+  const b = e.target.closest("button"); if(!b) return;
+  selSubj = {name:b.dataset.subj, cat:b.dataset.cat};
+  [...subjChips.children].forEach(x=>x.classList.toggle("on", x===b));
+  subjFree.hidden = selSubj.name !== FREE;
+  if(!subjFree.hidden) subjFree.focus();
+});
 typeChips.addEventListener("click", e=>{
   const b = e.target.closest("button"); if(!b) return;
-  selType = b.dataset.type;
-  applyTypeToForm();
+  selType = b.dataset.type; applyType();
 });
-
-function selectCategory(cat){
-  selCat = cat;
-  [...catChips.children].forEach(x=>x.classList.toggle("on", x.dataset.cat===selCat));
-  const opts = [...SUBJECTS[selCat], FREE];
-  subjSel.innerHTML = opts.map(o=>`<option>${o}</option>`).join("");
-  subjField.hidden = false;
-  subjFree.hidden = true; subjFree.value = "";
+loadChips.addEventListener("click", e=>{
+  const b = e.target.closest("button"); if(!b) return;
+  selLoad = b.dataset.load;
+  [...loadChips.children].forEach(x=>x.classList.toggle("on", x===b));
+});
+function applyType(){
+  [...typeChips.children].forEach(x=>x.classList.toggle("on", x.dataset.type===selType));
+  const tp = TYPES[selType];
+  document.getElementById("dueLabel").innerHTML = `${tp.dueLabel} <span class="req">必須</span>`;
+  document.getElementById("contentLabel").innerHTML =
+    (selType==="quiz" ? "出るところ・範囲" : "内容メモ") + ` <span class="opt">任意</span>`;
+  fContent.placeholder = selType==="quiz" ? "例:英単語No.1〜100" : "例:ワークP.10〜15";
+  document.getElementById("sheetTitle").textContent =
+    (editingId ? `${tp.label}を編集` : `${tp.label}を追加`);
 }
-catChips.addEventListener("click", e=>{
-  const b = e.target.closest("button"); if(!b) return;
-  selectCategory(b.dataset.cat);
+
+/* 写真 */
+const photoInput = document.getElementById("photoInput");
+document.getElementById("photoBtn").addEventListener("click", ()=> photoInput.click());
+document.getElementById("photoDel").addEventListener("click", ()=>{ photoData = null; drawPhoto(); });
+photoInput.addEventListener("change", ()=>{
+  const f = photoInput.files[0]; if(!f) return;
+  const img = new Image();
+  img.onload = ()=>{
+    const max = 1000;
+    const scale = Math.min(1, max / Math.max(img.width, img.height));
+    const c = document.createElement("canvas");
+    c.width = Math.round(img.width * scale); c.height = Math.round(img.height * scale);
+    c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+    photoData = c.toDataURL("image/jpeg", 0.6);
+    URL.revokeObjectURL(img.src);
+    drawPhoto();
+  };
+  img.onerror = ()=>{ alert("写真を読み込めませんでした"); URL.revokeObjectURL(img.src); };
+  img.src = URL.createObjectURL(f);
+  photoInput.value = "";
 });
-subjSel.addEventListener("change", ()=>{ subjFree.hidden = subjSel.value !== FREE; if(!subjFree.hidden) subjFree.focus(); });
-remChips.addEventListener("click", e=>{
-  const b = e.target.closest("button"); if(!b) return;
-  const d = Number(b.dataset.d);
-  if(selReminders.includes(d)) selReminders = selReminders.filter(x=>x!==d);
-  else selReminders.push(d);
-  b.classList.toggle("on");
-});
+function drawPhoto(){
+  document.getElementById("photoPrev").innerHTML = photoData ? `<img src="${photoData}" alt="プレビュー">` : "";
+  document.getElementById("photoDel").hidden = !photoData;
+  document.getElementById("photoBtn").textContent = photoData ? "📷 撮り直す" : "📷 黒板を撮る";
+}
 
 function openSheet(t){
   editingId = t ? t.id : null;
-  selType = t ? (t.type || "hw") : (filter !== "all" ? filter : "hw");
-  selCat = t ? t.category : null;
-  selReminders = t ? [...t.reminders] : [3,1];
-  [...catChips.children].forEach(x=>x.classList.toggle("on", x.dataset.cat===selCat));
-  if(selCat){
-    const opts = [...SUBJECTS[selCat], FREE];
-    subjSel.innerHTML = opts.map(o=>`<option>${o}</option>`).join("");
-    subjField.hidden = false;
-    if(t && !SUBJECTS[selCat].includes(t.subject) && t.subject !== selCat){
-      subjSel.value = FREE; subjFree.hidden = false; subjFree.value = t.subject;
-    } else { subjSel.value = t ? t.subject : opts[0]; subjFree.hidden = true; subjFree.value=""; }
-  } else { subjField.hidden = true; }
-  fContent.value = t ? t.content : "";
+  selType = t ? t.type : "hw";
+  selLoad = t ? (t.load || "m") : "m";
+  photoData = t ? (t.photo || null) : null;
+  buildSubjChips(); buildDueChips();
+
+  selSubj = t ? {name: SUBJECTS.some(s=>s.name===t.subject) ? t.subject : FREE, cat: t.cat} : null;
+  [...subjChips.children].forEach(x=>x.classList.toggle("on", selSubj && x.dataset.subj===selSubj.name));
+  if(t && selSubj.name === FREE){ subjFree.hidden = false; subjFree.value = t.subject; }
+  else { subjFree.hidden = true; subjFree.value = ""; }
+
+  fContent.value = t ? (t.content||"") : "";
   fDue.value = t ? t.due : "";
   fTarget.value = t ? (t.target||"") : "";
-  fFocus.value = t ? (t.focus||"") : "";
-  [...remChips.children].forEach(x=>x.classList.toggle("on", selReminders.includes(Number(x.dataset.d))));
-  applyTypeToForm();
+  [...loadChips.children].forEach(x=>x.classList.toggle("on", x.dataset.load===selLoad));
+  [...dueChips.children].forEach(x=>x.classList.toggle("on", x.dataset.due===fDue.value));
+  applyType(); drawPhoto();
   sheet.classList.add("show"); scrim.classList.add("show");
+  sheet.scrollTop = 0;
 }
 function closeSheet(){ sheet.classList.remove("show"); scrim.classList.remove("show"); }
-
 document.getElementById("fab").addEventListener("click", ()=>openSheet(null));
 document.getElementById("cancelBtn").addEventListener("click", closeSheet);
 scrim.addEventListener("click", closeSheet);
 
 document.getElementById("saveBtn").addEventListener("click", ()=>{
-  if(!selCat){ alert("教科等を選んでください"); return; }
-  let subject = subjSel.value;
+  if(!selSubj){ alert("科目を選んでください"); return; }
+  let subject = selSubj.name, cat = selSubj.cat;
   if(subject === FREE){
     subject = subjFree.value.trim();
     if(!subject){ alert("科目名を入力してください"); return; }
+    cat = "自由";
   }
-  if(!fDue.value){ alert(TYPES[selType].dueLabel + "を入力してください"); return; }
+  if(!fDue.value){ alert(TYPES[selType].dueLabel + "を選んでください"); return; }
+  if(!selLoad){ alert("どれくらいかかりそうか選んでください"); return; }
+
   const data = {
-    type: selType,
-    category: selCat, subject,
-    content: fContent.value.trim(),
-    due: fDue.value,
-    target: fTarget.value || null,
-    focus: fFocus.value.trim(),
-    reminders: [...selReminders].sort((a,b)=>b-a)
+    type: selType, subject, cat, due: fDue.value, load: selLoad,
+    content: fContent.value.trim(), target: fTarget.value || null, photo: photoData
   };
-  if(editingId){
-    const t = tasks.find(x=>x.id===editingId);
-    Object.assign(t, data);
-  } else {
-    tasks.push({id:uid(), done:false, ...data});
+  if(editingId){ Object.assign(tasks.find(x=>x.id===editingId), data); }
+  else {
+    tasks.push({id:uid(), done:false, submitted:false, started:null, ...data});
+    freq[selSubj.name] = (freq[selSubj.name]||0) + 1; saveFreq();
+    toast("登録しました 📝");
   }
   saveTasks(); closeSheet(); render();
 });
 
-/* ---------- service worker ---------- */
+/* ===== service worker ===== */
 if("serviceWorker" in navigator){
-  window.addEventListener("load", ()=> {
-    navigator.serviceWorker.register("sw.js").then(reg=>{
-      reg.update(); // force an update check now, instead of waiting for the browser's own schedule
-    }).catch(()=>{});
+  window.addEventListener("load", ()=>{
+    navigator.serviceWorker.register("sw.js").then(reg=> reg.update()).catch(()=>{});
   });
-  // once a new service worker takes control, the page it's holding is stale — reload once
   let refreshed = false;
   navigator.serviceWorker.addEventListener("controllerchange", ()=>{
-    if(refreshed) return;
-    refreshed = true;
-    window.location.reload();
+    if(refreshed) return; refreshed = true; window.location.reload();
   });
 }
 
+buildSubjChips(); buildDueChips();
 render();
+
+/* 自動テスト用のフック(通常の利用には影響しません) */
+window.__app = {
+  get tasks(){ return tasks; }, set tasks(v){ tasks = v; },
+  get freq(){ return freq; },
+  render, switchTab, downloadICS, stripSuffix, guessCat, isTight, needMin, startDate, toStr, daysUntil
+};
 </script>
 </body>
 </html>
