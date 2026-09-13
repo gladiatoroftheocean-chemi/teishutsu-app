@@ -75,10 +75,11 @@ header .count{font-size:12px;color:var(--muted)}
   padding:17px;border-radius:15px;letter-spacing:.02em}
 .goBtn:active{transform:scale(.985)}
 .goBtn.started{background:#EDEFEA;color:var(--muted);font-size:15px;font-weight:700}
-.subActs{display:flex;gap:8px;margin-top:10px}
-.subActs button{flex:1;background:#EDEFEA;border-radius:11px;padding:11px 4px;
+.subActs{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.subActs button{flex:1;min-width:88px;background:#EDEFEA;border-radius:11px;padding:11px 4px;
   font-size:13px;font-weight:700;color:var(--ink)}
 .subActs button.done2{background:var(--marker)}
+.subActs button.ics{background:var(--marker)}
 .more{display:block;width:100%;text-align:center;margin-top:14px;
   font-size:13.5px;color:var(--muted);font-weight:700;padding:6px}
 
@@ -429,6 +430,7 @@ function renderNow(act, unsent){
       </button>
       <div class="subActs">
         <button data-act="done" data-id="${t.id}">終わった</button>
+        <button data-act="edit" data-id="${t.id}">編集</button>
         <button class="ics" data-act="ics" data-id="${t.id}">📅 カレンダーに入れる</button>
       </div>
     </div>
