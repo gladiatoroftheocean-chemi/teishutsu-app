@@ -110,6 +110,8 @@ header .count{font-size:12px;color:var(--muted)}
 .card .acts .ics{background:var(--marker)}
 .card .acts .del{margin-left:auto;background:transparent;color:var(--muted)}
 .card .pin{display:inline-block;font-size:11px;font-weight:700;color:var(--alert);margin-top:5px}
+.card .pinCal{display:inline-block;font-size:11px;font-weight:700;color:var(--warn);margin-top:5px;margin-left:8px}
+.focusCal{margin-top:8px;font-size:12.5px;font-weight:700;color:var(--warn)}
 .empty{text-align:center;color:var(--muted);padding:46px 20px;font-size:14px}
 .empty .big{font-size:40px;display:block;margin-bottom:8px}
 .secTtl{font-size:12px;font-weight:700;color:var(--muted);margin:6px 0 -2px;padding-left:2px}
@@ -425,13 +427,14 @@ function renderNow(act, unsent){
       ${t.content ? `<div class="body">${esc(t.content)}</div>` : ""}
       ${t.photo ? `<div class="thumb"><img src="${t.photo}" data-photo="${t.id}" alt="登録した写真"></div>` : ""}
       <div class="left">${left}</div>
+      ${!t.calReg ? `<div class="focusCal">🔔 まだカレンダーに入っていません。下のボタンから登録できます</div>` : ""}
       <button class="goBtn${startedToday ? " started" : ""}" data-act="go" data-id="${t.id}">
         ${startedToday ? "✓ 今日はもう手をつけた" : "まず15分、やってみる"}
       </button>
       <div class="subActs">
         <button data-act="done" data-id="${t.id}">終わった</button>
         <button data-act="edit" data-id="${t.id}">編集</button>
-        <button class="ics" data-act="ics" data-id="${t.id}">📅 カレンダーに入れる</button>
+        <button class="ics" data-act="ics" data-id="${t.id}">🔔 ${t.calReg ? "カレンダーを確認" : "カレンダーに入れる"}</button>
       </div>
     </div>
     ${act.length > 1 ? `<button class="more" data-act="tab-all">ほかに ${act.length-1} 件 →</button>` : ""}`;
@@ -482,6 +485,7 @@ function cardHTML(t){
         <div class="title">${esc(t.content) || "(メモなし)"}</div>
         <div class="meta">${tp.word} ${fmt(t.due)}${t.target ? ` ・ 自分の予定 ${fmt(t.target)}` : ""}</div>
         ${waiting ? `<span class="pin">📮 まだ出していません</span>` : ""}
+        ${!t.calReg && !finished ? `<span class="pinCal">🔔 カレンダー未登録</span>` : ""}
       </div>
       <div class="due ${cls}"><span class="n">${num}</span><div class="l">${lab}</div></div>
     </div>
@@ -492,7 +496,7 @@ function cardHTML(t){
           : `<button data-act="undo">戻す</button>`)
         : (!t.done ? `<button data-act="done">勉強した</button>` : `<button data-act="undo">戻す</button>`)}
       ${t.photo ? `<button data-act="photo">📷 写真</button>` : ""}
-      <button class="ics" data-act="ics">📅</button>
+      <button class="ics" data-act="ics">${t.calReg ? "🔔" : "🔔 未登録"}</button>
       <button data-act="edit">編集</button>
       <button class="del" data-act="del" aria-label="削除">🗑</button>
     </div>
@@ -525,7 +529,7 @@ document.body.addEventListener("click", e=>{
   else if(act === "undo"){ t.done = false; t.submitted = false; saveTasks(); render(); }
   else if(act === "del"){ if(confirm("削除しますか?")){ tasks = tasks.filter(x=>x.id!==id); saveTasks(); render(); } }
   else if(act === "edit"){ openSheet(t); }
-  else if(act === "ics"){ downloadICS(t); }
+  else if(act === "ics"){ downloadICS(t); t.calReg = true; saveTasks(); render(); }
   else if(act === "photo"){ showPhoto(t.photo); }
 });
 
@@ -561,8 +565,8 @@ function alarm(days, summary){
   const trig = days === 0 ? "PT8H" : `-P${days-1}DT16H`;
   return ["BEGIN:VALARM","ACTION:DISPLAY",`DESCRIPTION:${summary}`,`TRIGGER:${trig}`,"END:VALARM"];
 }
-function vevent(dateStr, summary, reminders){
-  const lines = ["BEGIN:VEVENT", `UID:${uid()}@teishutsu`,
+function vevent(dateStr, summary, reminders, uidBase){
+  const lines = ["BEGIN:VEVENT", `UID:${uidBase}@teishutsu`,
     `DTSTAMP:${new Date().toISOString().replace(/[-:]/g,"").slice(0,15)}Z`,
     `DTSTART;VALUE=DATE:${icsDate(dateStr)}`, `DTEND;VALUE=DATE:${nextDay(dateStr)}`,
     `SUMMARY:${summary}`];
@@ -583,10 +587,10 @@ function downloadICS(t){
   /* 主役は「始める日」の通知 */
   const sd = startDate(t);
   if(sd !== t.due){
-    lines.push(...vevent(sd, `【そろそろ始める】${name}`, [0]));
+    lines.push(...vevent(sd, `【そろそろ始める】${name}`, [0], `${t.id}-start`));
   }
-  lines.push(...vevent(t.due, `【${tp.icsTag}】${name}`, [1,0]));
-  if(t.target) lines.push(...vevent(t.target, `【自分の予定】${name} ここまでに終わらせる`, [0]));
+  lines.push(...vevent(t.due, `【${tp.icsTag}】${name}`, [1,0], `${t.id}-due`));
+  if(t.target) lines.push(...vevent(t.target, `【自分の予定】${name} ここまでに終わらせる`, [0], `${t.id}-target`));
   lines.push("END:VCALENDAR");
   const blob = new Blob([lines.join("\r\n")], {type:"text/calendar;charset=utf-8"});
   const a = document.createElement("a");
@@ -730,13 +734,29 @@ document.getElementById("saveBtn").addEventListener("click", ()=>{
     type: selType, subject, cat, due: fDue.value, load: selLoad,
     content: fContent.value.trim(), target: fTarget.value || null, photo: photoData
   };
-  if(editingId){ Object.assign(tasks.find(x=>x.id===editingId), data); }
-  else {
-    tasks.push({id:uid(), done:false, submitted:false, started:null, ...data});
+  let target, dueChanged;
+  if(editingId){
+    target = tasks.find(x=>x.id===editingId);
+    dueChanged = target.due !== data.due;
+    Object.assign(target, data);
+  } else {
+    target = {id:uid(), done:false, submitted:false, started:null, calReg:false, ...data};
+    tasks.push(target);
     freq[selSubj.name] = (freq[selSubj.name]||0) + 1; saveFreq();
-    toast("登録しました 📝");
+    dueChanged = true;
   }
   saveTasks(); closeSheet(); render();
+
+  /* 締切が新規・変更された場合は、その場で自動的にカレンダー登録まで進める。
+     「あとで」を選べる余地をなくすのが目的。 */
+  if(dueChanged){
+    downloadICS(target);
+    target.calReg = true;
+    saveTasks();
+    toast(editingId ? "更新しました 📝 カレンダーも自動で更新しました" : "登録しました 📝 カレンダーへの追加画面が開きます");
+  } else {
+    toast("更新しました 📝");
+  }
 });
 
 /* ===== service worker ===== */
